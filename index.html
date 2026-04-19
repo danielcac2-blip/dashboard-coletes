@@ -1485,17 +1485,20 @@ function limparBusca(){
 // ===== BUSCAR POR UNIDADE =====
 let _estRows=[], _estHeaders=[], _demRaw=null;
 
+// Unidades que devem ser agrupadas no EM4RPM
+const EM4MERGE=['2 GRS','2 GRS/4 RPM','4 RPM','4RPM','EM4RPM/4 RPM','EM4RPM'];
+const normUni=u=>{
+  const ut=(u||'').trim();
+  if(EM4MERGE.some(a=>ut.toUpperCase()===a.toUpperCase())) return 'EM4RPM/4 RPM';
+  return ut;
+};
+
 function popularUnidadesSelect(){
   if(!_fixoRows.length)return;
   const H=_fixoHeaders;
   const cU=findCol(H,['UNIDADE PRINCIPAL','UNIDADE']);
   if(!cU)return;
-  // Normaliza unidades: agrupa 2 GRS e 4 RPM dentro de EM4RPM/4 RPM
-  const normUni=u=>{
-    const ut=(u||'').trim();
-    if(ut==='2 GRS'||ut==='2 GRS/4 RPM'||ut==='4 RPM'||ut.toUpperCase()==='4RPM') return 'EM4RPM/4 RPM';
-    return ut;
-  };
+  // Normaliza e remove duplicatas — 2 GRS e 4 RPM somem, ficam só no EM4RPM
   const unidades=[...new Set(_fixoRows.map(r=>normUni(r[cU]||'')).filter(v=>v&&v.length>2))].sort();
   const sel=$('buscaUniSelect');
   sel.innerHTML='<option value="">— Selecione uma unidade —</option>'+
@@ -1593,7 +1596,7 @@ function buscarUnidade(){
   const mMap=cM?countMap(Rf.map(r=>r[cM])):{};
   const ms=sorted(mMap,5);
   donut('cUniMarcas',ms.map(m=>m[0]),ms.map(m=>m[1]));
-  progBar($('plUniMarcas'),ms,total);
+  progBar($('plUniMarcas'),ms,Rf.length);
 
   // Tamanhos
   const tMap=cTA?countMap(Rf.map(r=>r[cTA])):{};
@@ -1631,12 +1634,7 @@ function buscarUnidade(){
     const cVe=findCol(Hes,['VALIDADE']);
     const cStE=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO']);
     // Filtra estoque pela unidade — tenta match direto ou parcial
-    const uniBase=uni.split('/')[0].trim();
-    const Re=cUe?_estRows.filter(r=>{
-      const uEst=(r[cUe]||'').trim();
-      if(isEM4) return EM4ALIASES.some(a=>uEst===a||uEst.toUpperCase().includes('EM4')||uEst.toUpperCase().includes('2 GRS')||uEst==='4 RPM');
-      return uEst===uni || uEst.includes(uniBase) || uni.includes(uEst);
-    }):[];
+    const Re=cUe?_estRows.filter(r=>matchUni(r[cUe]||'')):[];
     // Debug: mostra todas as colunas disponíveis no estoque
     const cMe2=findCol(_estHeaders,['MARCA','FABRICANTE']);
     const cTe2=findCol(_estHeaders,['TAMANHO']);
@@ -1666,7 +1664,7 @@ function buscarUnidade(){
       let demRow=null;
       for(let i=hIdx+1;i<raw.length;i++){
         const u=(raw[i][0]||'').toString().trim();
-        if(u===uni||(isEM4&&EM4ALIASES.some(a=>u===a))){
+        if(normUni(u)===normUni(uni)){
           demRow={};cols.forEach((c,j)=>demRow[c]=(raw[i][j]||'0').toString().trim());
           break;
         }
