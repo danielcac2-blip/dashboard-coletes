@@ -636,6 +636,15 @@ async function carregarDados(){
     // Helper para renderizar com proteção contra erros
     const safe=(name,fn)=>{try{fn();}catch(e){console.error('Erro em '+name+':',e);}};
 
+    // Calcula _divTotal ANTES de renderGeral — usa mesma lógica do renderDiverg
+    if(divData){
+      const{headers:_dH,rows:_dR}=parseSheet(divData);
+      const _cN2=_dH.find(h=>h.toUpperCase()==='NOME');
+      window._divTotal=_cN2
+        ? _dR.filter(r=>{const n=(r[_cN2]||'').trim();return n&&n!=='NOME'&&!n.includes('DIVERGÊNCIA')&&!n.includes('MILITAR')&&n.length>3}).length
+        : _dR.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length;
+    }
+
     if(fixoData)safe('renderGeral',()=>{
       renderGeral(fixoData,semData);
       const _fp=parseSheet(fixoData);
@@ -654,8 +663,6 @@ async function carregarDados(){
     });
     if(subData)safe('renderSubst',()=>renderSubst(subData));
     if(divData)safe('renderDiverg',()=>renderDiverg(divData));
-    // Armazena contagem real de divergências para usar na Visão Geral
-    if(divData){const{rows}=parseSheet(divData);window._divTotal=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length;}
     if(demData)safe('renderDemanda',()=>{renderDemanda(demData);_demRaw=demData;});
     if(demData&&subData)safe('renderPosDistr',()=>renderPosDistr(demData,vlrMasc,vlrFem));
 
