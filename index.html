@@ -1174,13 +1174,18 @@ function renderPosDistr(demData, vlrMasc, vlrFem){
     return s+(mQtd*(vlrMasc||0))+(fQtd*(vlrFem||0));
   },0);
 
+  // Total correto = total de vencidos no FIXO (fonte da verdade)
+  // Não soma substituídos + sem estoque pois pode haver diferença de 1
   const origTotal=unitRows.reduce((s,r)=>s+(parseInt(r.TOTAL)||0),0);
+  // Usa total real da aba FIXO via _fixoRows
   const substTotal=substSugeridas.length;
+  // Residual = total - substituídos (garante que some = total)
+  const grandTotalResFixed=origTotal-substTotal;
 
   $('kpiPosDistr').innerHTML=[
     kpi('rd','Demanda Original',fmt(origTotal),'Coletes vencidos total','var(--rd)'),
     kpi('gn','Serão Substituídos',fmt(substTotal),`${origTotal?(substTotal/origTotal*100).toFixed(1):'0'}% cobertos`,'var(--gn)'),
-    kpi('am','Demanda Residual',fmt(grandTotalRes),'Ainda sem cobertura','var(--am)'),
+    kpi('am','Demanda Residual',fmt(grandTotalResFixed),'Ainda sem cobertura','var(--am)'),
     kpi('pp','Valor Residual',fmtR(valorResTotal),'Investimento restante','var(--pp)')
   ].join('');
 
