@@ -653,6 +653,8 @@ async function carregarDados(){
     });
     if(subData)safe('renderSubst',()=>renderSubst(subData));
     if(divData)safe('renderDiverg',()=>renderDiverg(divData));
+    // Armazena contagem real de divergências para usar na Visão Geral
+    if(divData){const{rows}=parseSheet(divData);window._divTotal=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length;}
     if(demData)safe('renderDemanda',()=>{renderDemanda(demData);_demRaw=demData;});
     if(demData&&subData)safe('renderPosDistr',()=>renderPosDistr(demData,vlrMasc,vlrFem));
 
