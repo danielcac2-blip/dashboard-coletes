@@ -532,6 +532,29 @@ function parseSheet(sheetData, skipHeaderRows=0){
   return{headers,rows};
 }
 
+// Ordem hierárquica de postos/graduações PMMG
+const POSTO_ORDER=[
+  'CORONEL','TENENTE CORONEL','MAJOR','CAPITAO','CAPITÃO',
+  '1 TENENTE','1 TENENTE','1º TENENTE','1° TENENTE','PRIMEIRO TENENTE',
+  '2 TENENTE','2 TENENTE','2º TENENTE','2° TENENTE','SEGUNDO TENENTE',
+  'ASPIRANTE','ASPIRANTE A OFICIAL',
+  '1 SARGENTO','1º SARGENTO','1° SARGENTO','PRIMEIRO SARGENTO',
+  '2 SARGENTO','2º SARGENTO','2° SARGENTO','SEGUNDO SARGENTO',
+  '3 SARGENTO','3º SARGENTO','3° SARGENTO','TERCEIRO SARGENTO',
+  'CABO','SOLDADO','SOLDADO DE 1 CLASSE','SOLDADO DE 2 CLASSE','ALUNO'
+];
+
+function postoIdx(p){
+  const u=(p||'').toUpperCase().trim()
+    .replace(/[°º]/g,' ').replace(/\s+/g,' ').trim();
+  const idx=POSTO_ORDER.findIndex(o=>u.includes(o)||o.includes(u));
+  return idx<0?999:idx;
+}
+
+function sortedPostos(map){
+  return Object.entries(map).sort((a,b)=>postoIdx(a[0])-postoIdx(b[0]));
+}
+
 function findCol(headers,keywords){
   return headers.find(h=>{const u=h.replace(/\s+/g,' ').trim().toUpperCase();return keywords.some(k=>u.includes(k.toUpperCase()))});
 }
@@ -690,7 +713,7 @@ function renderGeral(fixoData, semData){
   donut('cMarcas',marcas.map(m=>m[0]),marcas.map(m=>m[1]));
   progBar($('plMarcas'),marcas,total);
 
-  const postos=sorted(cP?countMap(R.map(r=>r[cP])):{});
+  const postos=sortedPostos(cP?countMap(R.map(r=>r[cP])):{});
   hBar('cPostos',postos.map(p=>p[0]),postos.map(p=>p[1]));
   const sits=sorted(cS?countMap(R.map(r=>r[cS])):{},10);
   hBar('cSit',sits.map(s=>s[0]),sits.map(s=>s[1]));
@@ -1596,7 +1619,7 @@ function buscarUnidade(){
 
   // Postos
   const pMap=cP?countMap(Rf.map(r=>r[cP])):{};
-  const ps=sorted(pMap);
+  const ps=sortedPostos(pMap);
   hBar('cUniPosto',ps.map(p=>p[0]),ps.map(p=>p[1]));
 
   // Tabela vencendo 12 meses
