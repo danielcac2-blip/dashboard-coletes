@@ -217,6 +217,7 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   <div class="nt" data-tab="demanda">Demanda</div>
   <div class="nt" data-tab="posdistr">Demanda Pós Distribuição</div>
   <div class="nt" data-tab="busca">🔍 Buscar Militar</div>
+  <div class="nt" data-tab="buscaUni">🏢 Buscar Unidade</div>
 </div>
 
 <main>
@@ -406,6 +407,67 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   </div>
 </div>
 
+<!-- BUSCA UNIDADE -->
+<div id="sec-buscaUni" class="sec">
+  <div class="sl">Consulta por Unidade</div>
+
+  <div class="cc" style="margin-bottom:16px">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <select id="buscaUniSelect"
+        onchange="buscarUnidade()"
+        style="flex:1;min-width:280px;background:var(--ny2);border:1px solid var(--bd2);color:var(--wh);
+               padding:12px 16px;border-radius:6px;font-family:'Rawline';font-size:14px;outline:none;cursor:pointer">
+        <option value="">— Selecione uma unidade —</option>
+      </select>
+      <button onclick="limparBuscaUni()"
+        style="background:rgba(255,255,255,.06);border:1px solid var(--bd);color:var(--tx2);
+               padding:12px 18px;border-radius:6px;font-family:'Rawline';font-size:12px;
+               font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer">
+        ✕ Limpar
+      </button>
+    </div>
+    <div id="buscaUniInfo" style="margin-top:10px;font-size:11px;color:var(--tx3);font-family:'IBM Plex Mono'"></div>
+  </div>
+
+  <div id="buscaUniContent" style="display:none">
+    <!-- KPIs da unidade -->
+    <div class="sl">Indicadores da Unidade</div>
+    <div class="kg" id="kpiUni"></div>
+
+    <!-- Gráficos -->
+    <div class="sl">Situação & Validade</div>
+    <div class="cr r3">
+      <div class="cc"><div class="ct">Status dos Coletes <span class="tg">VÁLIDO / VENCIDO</span></div><canvas id="cUniStatus" class="sh"></canvas><div class="sg" id="sgUni" style="margin-top:14px"></div></div>
+      <div class="cc"><div class="ct">Vencimentos por Ano <span class="tg">TIMELINE</span></div><canvas id="cUniVenc" class="tl"></canvas></div>
+      <div class="cc"><div class="ct">Marcas <span class="tg">DISTRIBUIÇÃO</span></div><canvas id="cUniMarcas" class="sh"></canvas></div>
+    </div>
+
+    <div class="sl">Distribuição</div>
+    <div class="cr r2">
+      <div class="cc"><div class="ct">Tamanhos <span class="tg">EFETIVO</span></div><canvas id="cUniTam" class="tl"></canvas></div>
+      <div class="cc"><div class="ct">Postos / Graduações <span class="tg">HIERARQUIA</span></div><canvas id="cUniPosto" class="tl"></canvas></div>
+    </div>
+
+    <!-- Vencendo 12 meses -->
+    <div class="sl">Vencendo nos Próximos 12 Meses</div>
+    <div class="cr r1">
+      <div class="cc"><div class="ct">Detalhamento <span class="tg">TAMANHO + DATA</span></div><div class="tbl-wrap" id="tblUniVenc12"></div></div>
+    </div>
+
+    <!-- Estoque -->
+    <div class="sl">Estoque Físico da Unidade</div>
+    <div class="cr r1">
+      <div class="cc"><div class="ct">Coletes em Estoque <span class="tg">DISPONÍVEIS</span></div><div class="tbl-wrap" id="tblUniEst"></div></div>
+    </div>
+
+    <!-- Demanda -->
+    <div class="sl">Demanda da Unidade</div>
+    <div class="cr r1">
+      <div class="cc"><div class="ct">Coletes Necessários por Tamanho <span class="tg">REPOSIÇÃO</span></div><div id="tblUniDem"></div></div>
+    </div>
+  </div>
+</div>
+
 </main>
 <footer id="footer">4ª RPM — PMMG · Controle de Coletes Balísticos</footer>
 </div>
@@ -540,16 +602,19 @@ async function carregarDados(){
     if(fixoData){renderGeral(fixoData,semData);
       // Armazena para busca
       const _fp=parseSheet(fixoData);
-      _fixoRows=_fp.rows;_fixoHeaders=_fp.fields||_fp.headers;}
+      _fixoRows=_fp.rows;_fixoHeaders=_fp.fields||_fp.headers;
+      popularUnidadesSelect();}
     if(semData){renderSemColete(semData,fixoData);
       // Armazena para busca
       const _sp=parseSheet(semData);
       const _semR=_sp.rows||[];
       _semRows=_semR.filter(r=>Object.values(r).some(v=>v&&v.toString().length>2));}
-    if(estData)renderEstoque(estData);
+    if(estData){renderEstoque(estData);
+      const _ep=parseSheet(estData);
+      _estRows=_ep.rows||[];_estHeaders=_ep.fields||_ep.headers;}
     if(subData)renderSubst(subData);
     if(divData)renderDiverg(divData);
-    if(demData)renderDemanda(demData);
+    if(demData){renderDemanda(demData);_demRaw=demData;}
     if(demData&&subData)renderPosDistr(demData,vlrMasc,vlrFem);
 
     // Badges
@@ -1414,6 +1479,212 @@ function limparBusca(){
   $('buscaTabela').innerHTML='';
   $('buscaCartao').style.display='none';
   $('buscaInput').focus();
+}
+
+// ===== BUSCAR POR UNIDADE =====
+let _estRows=[], _estHeaders=[], _demRaw=null;
+
+function popularUnidadesSelect(){
+  if(!_fixoRows.length)return;
+  const H=_fixoHeaders;
+  const cU=findCol(H,['UNIDADE PRINCIPAL','UNIDADE']);
+  if(!cU)return;
+  const unidades=[...new Set(_fixoRows.map(r=>(r[cU]||'').trim()).filter(v=>v&&v.length>2))].sort();
+  const sel=$('buscaUniSelect');
+  sel.innerHTML='<option value="">— Selecione uma unidade —</option>'+
+    unidades.map(u=>`<option value="${u}">${u}</option>`).join('');
+}
+
+function buscarUnidade(){
+  const uni=$('buscaUniSelect').value;
+  const info=$('buscaUniInfo');
+  const content=$('buscaUniContent');
+
+  if(!uni){
+    info.textContent='Selecione uma unidade para visualizar os dados.';
+    content.style.display='none';
+    return;
+  }
+
+  // Filtra dados pelo nome da unidade
+  const Hf=_fixoHeaders;
+  const cUf=findCol(Hf,['UNIDADE PRINCIPAL','UNIDADE']);
+  const cN=findCol(Hf,['NOME']);
+  const cVA=findCol(Hf,['VALIDADE']);
+  const cTA=findCol(Hf,['TAMANHO ATUAL']);
+  const cM=findCol(Hf,['MARCA']);
+  const cP=findCol(Hf,['POSTO','GRAD']);
+  const cV=findCol(Hf,['VÁLIDO','VENCIDO','VALIDO']);
+  const cTE=findCol(Hf,['TAMANHO ESCOLHIDO']);
+
+  const Rf=_fixoRows.filter(r=>(r[cUf]||'').trim()===uni);
+
+  // Sem colete da unidade
+  let Rsem=[];
+  if(_semRows.length){
+    const Hs=Object.keys(_semRows[0]||{});
+    const cUs=findCol(Hs,['UNIDADE PRINCIPAL','UNIDADE','LOTAÇÃO','LOTACAO']);
+    if(cUs)Rsem=_semRows.filter(r=>(r[cUs]||'').trim()===uni);
+  }
+
+  const total=Rf.length;
+  const semTotal=Rsem.length;
+  const efetivo=total+semTotal;
+
+  // Status
+  const stMap=cV?countMap(Rf.map(r=>r[cV])):{};
+  const val=stMap['VALIDO']||stMap['VÁLIDO']||0;
+  const ven=stMap['VENCIDO']||0;
+
+  // Vencendo 12 meses
+  const hoje2=new Date();
+  const limite=new Date(hoje2);limite.setFullYear(limite.getFullYear()+1);
+  const prox12=Rf.filter(r=>{
+    if(!cVA)return false;
+    const d=parseDate(r[cVA]);
+    return d&&d>=hoje2&&d<=limite;
+  });
+  const v12=prox12.length;
+
+  // Divergência de tamanho
+  const divT=Rf.filter(r=>{
+    const a=(r[cTA]||'').trim();const e=(r[cTE]||'').trim();
+    return a&&e&&a!==e;
+  }).length;
+
+  info.textContent=`Unidade: ${uni} — ${fmt(efetivo)} militares no efetivo total`;
+  content.style.display='block';
+
+  // KPIs
+  $('kpiUni').innerHTML=[
+    kpi('bl','Efetivo Total',fmt(efetivo),'Com + Sem colete'),
+    kpi('gn','Com Colete',fmt(total),`${efetivo?(total/efetivo*100).toFixed(1):'0'}%`,'var(--gn)'),
+    kpi('rd','Sem Colete',fmt(semTotal),`${efetivo?(semTotal/efetivo*100).toFixed(1):'0'}%`,'var(--rd)'),
+    kpi('gn','Válidos',fmt(val),`${total?(val/total*100).toFixed(1):'0'}% dos coletes`,'var(--gn)'),
+    kpi('rd','Vencidos',fmt(ven),`${total?(ven/total*100).toFixed(1):'0'}% — reposição`,'var(--rd)'),
+    kpi('am','Vencem 12 meses',fmt(v12),'Atenção programada','var(--am)'),
+    kpi('pp','Diverg. Tamanho',fmt(divT),'Tamanho atual ≠ escolhido','var(--pp)')
+  ].join('');
+
+  // Gráfico Status
+  donut('cUniStatus',['Válido','Vencido'],[val,ven],['rgba(78,167,46,.85)','rgba(233,113,50,.85)']);
+  const masc=Rf.filter(r=>(r[cTA]||'').includes('Masculino')).length;
+  const fem=Rf.filter(r=>(r[cTA]||'').includes('Feminino')).length;
+  $('sgUni').innerHTML=`<div class="si"><div class="il">Válidos</div><div class="iv" style="color:var(--gn)">${fmt(val)}</div></div><div class="si"><div class="il">Vencidos</div><div class="iv" style="color:var(--rd)">${fmt(ven)}</div></div><div class="si"><div class="il">Masculino</div><div class="iv">${fmt(masc)}</div></div><div class="si"><div class="il">Feminino</div><div class="iv">${fmt(fem)}</div></div>`;
+
+  // Vencimentos por Ano
+  const vAno={};
+  Rf.forEach(r=>{
+    if(!cVA)return;
+    const d=parseDate(r[cVA]);if(!d)return;
+    const y=d.getFullYear();vAno[y]=(vAno[y]||0)+1;
+  });
+  const anos=Object.keys(vAno).sort();
+  vBar('cUniVenc',anos,anos.map(y=>vAno[y]),anos.map(y=>+y<hoje2.getFullYear()?'rgba(233,113,50,.7)':+y===hoje2.getFullYear()?'rgba(155,138,92,.7)':'rgba(78,167,46,.7)'));
+
+  // Marcas
+  const mMap=cM?countMap(Rf.map(r=>r[cM])):{};
+  const ms=sorted(mMap,5);
+  donut('cUniMarcas',ms.map(m=>m[0]),ms.map(m=>m[1]));
+
+  // Tamanhos
+  const tMap=cTA?countMap(Rf.map(r=>r[cTA])):{};
+  const ts=sorted(tMap);
+  hBar('cUniTam',ts.map(t=>t[0]),ts.map(t=>t[1]));
+
+  // Postos
+  const pMap=cP?countMap(Rf.map(r=>r[cP])):{};
+  const ps=sorted(pMap,8);
+  hBar('cUniPosto',ps.map(p=>p[0]),ps.map(p=>p[1]));
+
+  // Tabela vencendo 12 meses
+  const cMu=findCol(Hf,['MUNICÍPIO','MUNICIPIO']);
+  const v12Sorted=prox12.slice().sort((a,b)=>{
+    const dA=parseDate(a[cVA])||new Date(9999,0);
+    const dB=parseDate(b[cVA])||new Date(9999,0);return dA-dB;
+  });
+  $('tblUniVenc12').innerHTML=v12Sorted.length?table(
+    ['Nome','Posto','Município','Tamanho','Validade','Dias Restantes'],
+    v12Sorted.slice(0,200).map(r=>{
+      const d=parseDate(r[cVA]);
+      const dias=d?Math.round((d-hoje2)/864e5):0;
+      const cls=dias<90?'td-rd':dias<180?'td-am':'td-gn';
+      return `<tr><td>${r[cN]||''}</td><td>${r[cP]||''}</td><td>${r[cMu]||''}</td><td class="td-am">${r[cTA]||''}</td><td>${fmtDate(r[cVA]||'')}</td><td class="${cls}">${dias} dias</td></tr>`;
+    })
+  ):'<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Nenhum colete vencendo nos próximos 12 meses.</p>';
+
+  // Estoque físico da unidade
+  if(_estRows.length){
+    const Hes=_estHeaders;
+    const cUe=findCol(Hes,['UNIDADE','BPM','RPM']);
+    const cTe=findCol(Hes,['TAMANHO']);
+    const cMe=findCol(Hes,['MARCA']);
+    const cSe=findCol(Hes,['Nº SÉRIE','SERIE','SÉRIE']);
+    const cVe=findCol(Hes,['VALIDADE']);
+    const cStE=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO']);
+    const Re=cUe?_estRows.filter(r=>(r[cUe]||'').trim().includes(uni.split('/')[0].trim())):[];
+    $('tblUniEst').innerHTML=Re.length?table(
+      ['Marca','Tamanho','Nº Série','Validade','Status'],
+      Re.slice(0,200).map(r=>{
+        const st=(r[cStE]||'').toUpperCase();
+        return `<tr><td>${r[cMe]||''}</td><td class="td-am">${r[cTe]||''}</td><td style="font-family:'IBM Plex Mono';font-size:10px">${r[cSe]||''}</td><td>${fmtDate(r[cVe]||'')}</td><td class="${st.includes('VENCIDO')?'td-rd':'td-gn'}">${r[cStE]||''}</td></tr>`;
+      })
+    ):'<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Sem estoque físico cadastrado para esta unidade.</p>';
+  }else{
+    $('tblUniEst').innerHTML='<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Dados de estoque não disponíveis.</p>';
+  }
+
+  // Demanda da unidade (extraída da aba DEMANDA)
+  if(_demRaw){
+    const raw=_demRaw.dados||[];
+    let hIdx=-1;
+    for(let i=0;i<raw.length;i++){
+      if(raw[i].some(v=>(v||'').toString().includes('UNIDADE PRINCIPAL'))){hIdx=i;break}
+    }
+    if(hIdx>=0){
+      const cols=['UNIDADE','P_M','M_M','G_M','GG_M','P_F','M_F','G_F','TOTAL'];
+      let demRow=null;
+      for(let i=hIdx+1;i<raw.length;i++){
+        const u=(raw[i][0]||'').toString().trim();
+        if(u===uni){
+          demRow={};cols.forEach((c,j)=>demRow[c]=(raw[i][j]||'0').toString().trim());
+          break;
+        }
+      }
+      if(demRow){
+        const tL=['P Masc.','M Masc.','G Masc.','GG Masc.','P Fem.','M Fem.','G Fem.'];
+        const tK=['P_M','M_M','G_M','GG_M','P_F','M_F','G_F'];
+        const totalDem=parseInt(demRow.TOTAL)||0;
+        const valDem=tK.slice(0,4).reduce((s,k)=>s+(parseInt(demRow[k])||0),0)*vlrMasc
+                   + tK.slice(4).reduce((s,k)=>s+(parseInt(demRow[k])||0),0)*vlrFem;
+        const cells=tK.map((k,i)=>{
+          const v=parseInt(demRow[k])||0;
+          return `<td style="text-align:center;padding:9px">${v>0?`<span style="color:var(--bl);font-weight:600">${v}</span>`:'—'}</td>`;
+        }).join('');
+        $('tblUniDem').innerHTML=`
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr>
+              ${tL.map(t=>`<th style="text-align:center;padding:9px;background:var(--ny2);color:var(--bl);border-bottom:1px solid var(--bd2);font-family:'Rawline';letter-spacing:1px;font-size:10px;text-transform:uppercase">${t}</th>`).join('')}
+              <th style="text-align:center;padding:9px;background:var(--ny2);color:var(--rd);border-bottom:1px solid var(--bd2);font-family:'Rawline';letter-spacing:1px;font-size:10px;text-transform:uppercase">Total</th>
+              <th style="text-align:right;padding:9px;background:var(--ny2);color:var(--am);border-bottom:1px solid var(--bd2);font-family:'Rawline';letter-spacing:1px;font-size:10px;text-transform:uppercase">Valor Estimado</th>
+            </tr></thead>
+            <tbody><tr>
+              ${cells}
+              <td style="text-align:center;padding:9px;font-weight:700;color:var(--rd)">${totalDem}</td>
+              <td style="text-align:right;padding:9px;font-weight:700;color:var(--am)">${fmtR(valDem)}</td>
+            </tr></tbody>
+          </table>`;
+      } else {
+        $('tblUniDem').innerHTML='<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Sem demanda registrada para esta unidade.</p>';
+      }
+    }
+  }
+}
+
+function limparBuscaUni(){
+  $('buscaUniSelect').value='';
+  $('buscaUniInfo').textContent='';
+  $('buscaUniContent').style.display='none';
 }
 
 // ===== INICIAR =====
