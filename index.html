@@ -210,14 +210,11 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
 
 <div class="nav" id="nav">
   <div class="nt ac" data-tab="geral">Visão Geral</div>
+  <div class="nt" data-tab="buscaUni">🏢 Buscar Unidade</div>
+  <div class="nt" data-tab="busca">🔍 Buscar Militar</div>
   <div class="nt" data-tab="semcolete">Sem Colete <span class="bg rd" id="bgSem">—</span></div>
-  <div class="nt" data-tab="estoque">Estoque Físico <span class="bg" id="bgEst">—</span></div>
-  <div class="nt" data-tab="subst">Substituição <span class="bg" id="bgSub">—</span></div>
   <div class="nt" data-tab="diverg">Divergências <span class="bg rd" id="bgDiv">—</span></div>
   <div class="nt" data-tab="demanda">Demanda</div>
-  <div class="nt" data-tab="posdistr">Demanda Pós Distribuição</div>
-  <div class="nt" data-tab="busca">🔍 Buscar Militar</div>
-  <div class="nt" data-tab="buscaUni">🏢 Buscar Unidade</div>
 </div>
 
 <main>
@@ -1622,14 +1619,26 @@ function buscarUnidade(){
     const cSe=findCol(Hes,['Nº SÉRIE','SERIE','SÉRIE']);
     const cVe=findCol(Hes,['VALIDADE']);
     const cStE=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO']);
-    const Re=cUe?_estRows.filter(r=>(r[cUe]||'').trim().includes(uni.split('/')[0].trim())):[];
+    // Filtra estoque pela unidade — tenta match direto ou parcial
+    const uniBase=uni.split('/')[0].trim();
+    const Re=cUe?_estRows.filter(r=>{
+      const uEst=(r[cUe]||'').trim();
+      if(isEM4) return EM4ALIASES.some(a=>uEst===a||uEst.toUpperCase().includes('EM4')||uEst.toUpperCase().includes('2 GRS')||uEst==='4 RPM');
+      return uEst===uni || uEst.includes(uniBase) || uni.includes(uEst);
+    }):[];
+    // Debug: mostra todas as colunas disponíveis no estoque
+    const cMe2=findCol(_estHeaders,['MARCA','FABRICANTE']);
+    const cTe2=findCol(_estHeaders,['TAMANHO']);
+    const cSe2=findCol(_estHeaders,['Nº SÉRIE','SERIE','SÉRIE','SERIAL']);
+    const cVe2=findCol(_estHeaders,['VALIDADE']);
+    const cStE2=findCol(_estHeaders,['VÁLIDO','VENCIDO','VALIDO','STATUS']);
     $('tblUniEst').innerHTML=Re.length?table(
       ['Marca','Tamanho','Nº Série','Validade','Status'],
       Re.slice(0,200).map(r=>{
-        const st=(r[cStE]||'').toUpperCase();
-        return `<tr><td>${r[cMe]||''}</td><td class="td-am">${r[cTe]||''}</td><td style="font-family:'IBM Plex Mono';font-size:10px">${r[cSe]||''}</td><td>${fmtDate(r[cVe]||'')}</td><td class="${st.includes('VENCIDO')?'td-rd':'td-gn'}">${r[cStE]||''}</td></tr>`;
+        const st=(r[cStE2]||'').toUpperCase();
+        return `<tr><td><strong>${r[cMe2]||r[cMe]||'—'}</strong></td><td class="td-am">${r[cTe2]||r[cTe]||''}</td><td style="font-family:'IBM Plex Mono';font-size:10px">${r[cSe2]||r[cSe]||''}</td><td>${fmtDate(r[cVe2]||r[cVe]||'')}</td><td class="${st.includes('VENCIDO')?'td-rd':'td-gn'}">${r[cStE2]||r[cStE]||''}</td></tr>`;
       })
-    ):'<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Sem estoque físico cadastrado para esta unidade.</p>';
+    ):`<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Sem estoque físico cadastrado para esta unidade. (${Re.length} registros buscados)</p>`;
   }else{
     $('tblUniEst').innerHTML='<p style="color:var(--tx3);padding:14px;text-align:center;font-size:12px">Dados de estoque não disponíveis.</p>';
   }
@@ -1646,7 +1655,7 @@ function buscarUnidade(){
       let demRow=null;
       for(let i=hIdx+1;i<raw.length;i++){
         const u=(raw[i][0]||'').toString().trim();
-        if(u===uni){
+        if(u===uni||(isEM4&&EM4ALIASES.some(a=>u===a))){
           demRow={};cols.forEach((c,j)=>demRow[c]=(raw[i][j]||'0').toString().trim());
           break;
         }
