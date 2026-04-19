@@ -1485,21 +1485,12 @@ function limparBusca(){
 // ===== BUSCAR POR UNIDADE =====
 let _estRows=[], _estHeaders=[], _demRaw=null;
 
-// Unidades que devem ser agrupadas no EM4RPM
-const EM4MERGE=['2 GRS','2 GRS/4 RPM','4 RPM','4RPM','EM4RPM/4 RPM','EM4RPM'];
-const normUni=u=>{
-  const ut=(u||'').trim();
-  if(EM4MERGE.some(a=>ut.toUpperCase()===a.toUpperCase())) return 'EM4RPM/4 RPM';
-  return ut;
-};
-
 function popularUnidadesSelect(){
   if(!_fixoRows.length)return;
   const H=_fixoHeaders;
   const cU=findCol(H,['UNIDADE PRINCIPAL','UNIDADE']);
   if(!cU)return;
-  // Normaliza e remove duplicatas — 2 GRS e 4 RPM somem, ficam só no EM4RPM
-  const unidades=[...new Set(_fixoRows.map(r=>normUni(r[cU]||'')).filter(v=>v&&v.length>2))].sort();
+  const unidades=[...new Set(_fixoRows.map(r=>(r[cU]||'').trim()).filter(v=>v&&v.length>2))].sort();
   const sel=$('buscaUniSelect');
   sel.innerHTML='<option value="">— Selecione uma unidade —</option>'+
     unidades.map(u=>`<option value="${u}">${u}</option>`).join('');
@@ -1634,7 +1625,11 @@ function buscarUnidade(){
     const cVe=findCol(Hes,['VALIDADE']);
     const cStE=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO']);
     // Filtra estoque pela unidade — tenta match direto ou parcial
-    const Re=cUe?_estRows.filter(r=>matchUni(r[cUe]||'')):[];
+    const uniBase=uni.split('/')[0].trim();
+    const Re=cUe?_estRows.filter(r=>{
+      const uEst=(r[cUe]||'').trim();
+      return uEst===uni||uEst.includes(uniBase)||uni.includes(uEst);
+    }):[];
     // Debug: mostra todas as colunas disponíveis no estoque
     const cMe2=findCol(_estHeaders,['MARCA','FABRICANTE']);
     const cTe2=findCol(_estHeaders,['TAMANHO']);
@@ -1664,7 +1659,7 @@ function buscarUnidade(){
       let demRow=null;
       for(let i=hIdx+1;i<raw.length;i++){
         const u=(raw[i][0]||'').toString().trim();
-        if(normUni(u)===normUni(uni)){
+        if(u===uni){
           demRow={};cols.forEach((c,j)=>demRow[c]=(raw[i][j]||'0').toString().trim());
           break;
         }
