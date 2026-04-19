@@ -458,6 +458,14 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
     </div>
 
     <!-- Demanda -->
+    <div class="sl" style="color:var(--rd)">Militares Sem Colete</div>
+    <div class="cr r1">
+      <div class="cc">
+        <div class="ct" style="color:var(--rd)">🚫 Sem Colete Cadastrado <span class="tg">RELAÇÃO COMPLETA</span></div>
+        <div class="tbl-wrap" id="tblUniSemColete"></div>
+      </div>
+    </div>
+
     <div class="sl">Demanda da Unidade</div>
     <div class="cr r1">
       <div class="cc"><div class="ct">Coletes Necessários por Tamanho <span class="tg">REPOSIÇÃO</span></div><div id="tblUniDem"></div></div>
@@ -1583,6 +1591,28 @@ function buscarUnidade(){
 
   info.textContent=`Unidade: ${uni} — ${fmt(efetivo)} militares no efetivo total`;
   content.style.display='block';
+
+  // Tabela militares sem colete
+  if(Rsem.length){
+    const Hs2=Object.keys(Rsem[0]||{});
+    const scN=findCol(Hs2,['NOME']);
+    const scNum=findCol(Hs2,['NUMERO','NÚMERO']);
+    const scPosto=findCol(Hs2,['POSTO','GRAD']);
+    const scSit=findCol(Hs2,['SITUAÇÃO','SITUACAO','SITUA']);
+    const scTam=findCol(Hs2,['TAMANHO']);
+    $('tblUniSemColete').innerHTML=table(
+      ['Nome','Matrícula','Posto','Tamanho Escolhido','Situação'],
+      Rsem.sort((a,b)=>postoIdx(a[scPosto]||'')-postoIdx(b[scPosto]||'')).map(r=>`<tr>
+        <td><strong>${r[scN]||''}</strong></td>
+        <td style="font-family:'IBM Plex Mono';font-size:10px">${r[scNum]||''}</td>
+        <td>${r[scPosto]||''}</td>
+        <td class="td-am">${r[scTam]||'—'}</td>
+        <td style="color:var(--tx3)">${r[scSit]||''}</td>
+      </tr>`)
+    );
+  } else {
+    $('tblUniSemColete').innerHTML='<p style="color:var(--gn);padding:14px;text-align:center;font-size:12px">✅ Todos os militares desta unidade possuem colete cadastrado.</p>';
+  }
 
   // KPIs
   $('kpiUni').innerHTML=[
