@@ -901,7 +901,7 @@ function renderSubst(subData){
     kpi('rd','Sem Estoque',fmt(semE),`${total?(semE/total*100).toFixed(1):'0'}% déficit`,'var(--rd)')
   ].join('');
 
-  document.querySelector('[data-tab="subst"] .bg').textContent=total;
+  const _bgSub=document.querySelector('[data-tab="subst"] .bg');if(_bgSub)_bgSub.textContent=total;
 
   donut('cSubSt',['Substituição Sugerida','Sem Estoque'],[sug,semE],['rgba(78,167,46,.85)','rgba(233,113,50,.85)']);
   const origens=sorted(cOr?countMap(R.map(r=>(r[cOr]||'').trim()).filter(v=>v&&v!=='-')):{},8);
