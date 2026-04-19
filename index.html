@@ -436,7 +436,7 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
     <div class="cr r3">
       <div class="cc"><div class="ct">Status dos Coletes <span class="tg">VÁLIDO / VENCIDO</span></div><canvas id="cUniStatus" class="sh"></canvas><div class="sg" id="sgUni" style="margin-top:14px"></div></div>
       <div class="cc"><div class="ct">Vencimentos por Ano <span class="tg">TIMELINE</span></div><canvas id="cUniVenc" class="tl"></canvas></div>
-      <div class="cc"><div class="ct">Marcas <span class="tg">DISTRIBUIÇÃO</span></div><canvas id="cUniMarcas" class="sh"></canvas></div>
+      <div class="cc"><div class="ct">Marcas <span class="tg">DISTRIBUIÇÃO</span></div><canvas id="cUniMarcas" class="sh"></canvas><div class="pl" id="plUniMarcas" style="margin-top:14px"></div></div>
     </div>
 
     <div class="sl">Distribuição</div>
@@ -596,23 +596,29 @@ async function carregarDados(){
     const demData=json['DEMANDA']||findSheet(json,'demanda');
 
 
-    if(fixoData){renderGeral(fixoData,semData);
-      // Armazena para busca
+    // Helper para renderizar com proteção contra erros
+    const safe=(name,fn)=>{try{fn();}catch(e){console.error('Erro em '+name+':',e);}};
+
+    if(fixoData)safe('renderGeral',()=>{
+      renderGeral(fixoData,semData);
       const _fp=parseSheet(fixoData);
-      _fixoRows=_fp.rows;_fixoHeaders=_fp.fields||_fp.headers;
-      popularUnidadesSelect();}
-    if(semData){renderSemColete(semData,fixoData);
-      // Armazena para busca
+      _fixoRows=_fp.rows;_fixoHeaders=_fp.headers;
+      popularUnidadesSelect();
+    });
+    if(semData)safe('renderSemColete',()=>{
+      renderSemColete(semData,fixoData);
       const _sp=parseSheet(semData);
-      const _semR=_sp.rows||[];
-      _semRows=_semR.filter(r=>Object.values(r).some(v=>v&&v.toString().length>2));}
-    if(estData){renderEstoque(estData);
+      _semRows=(_sp.rows||[]).filter(r=>Object.values(r).some(v=>v&&v.toString().length>2));
+    });
+    if(estData)safe('renderEstoque',()=>{
+      renderEstoque(estData);
       const _ep=parseSheet(estData);
-      _estRows=_ep.rows||[];_estHeaders=_ep.fields||_ep.headers;}
-    if(subData)renderSubst(subData);
-    if(divData)renderDiverg(divData);
-    if(demData){renderDemanda(demData);_demRaw=demData;}
-    if(demData&&subData)renderPosDistr(demData,vlrMasc,vlrFem);
+      _estRows=_ep.rows||[];_estHeaders=_ep.headers;
+    });
+    if(subData)safe('renderSubst',()=>renderSubst(subData));
+    if(divData)safe('renderDiverg',()=>renderDiverg(divData));
+    if(demData)safe('renderDemanda',()=>{renderDemanda(demData);_demRaw=demData;});
+    if(demData&&subData)safe('renderPosDistr',()=>renderPosDistr(demData,vlrMasc,vlrFem));
 
     // Badges
     if(semData){const {rows}=parseSheet(semData);const _s=$('bgSem');if(_s)_s.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
@@ -1484,7 +1490,13 @@ function popularUnidadesSelect(){
   const H=_fixoHeaders;
   const cU=findCol(H,['UNIDADE PRINCIPAL','UNIDADE']);
   if(!cU)return;
-  const unidades=[...new Set(_fixoRows.map(r=>(r[cU]||'').trim()).filter(v=>v&&v.length>2))].sort();
+  // Normaliza unidades: agrupa 2 GRS e 4 RPM dentro de EM4RPM/4 RPM
+  const normUni=u=>{
+    const ut=(u||'').trim();
+    if(ut==='2 GRS'||ut==='2 GRS/4 RPM'||ut==='4 RPM'||ut.toUpperCase()==='4RPM') return 'EM4RPM/4 RPM';
+    return ut;
+  };
+  const unidades=[...new Set(_fixoRows.map(r=>normUni(r[cU]||'')).filter(v=>v&&v.length>2))].sort();
   const sel=$('buscaUniSelect');
   sel.innerHTML='<option value="">— Selecione uma unidade —</option>'+
     unidades.map(u=>`<option value="${u}">${u}</option>`).join('');
@@ -1581,6 +1593,7 @@ function buscarUnidade(){
   const mMap=cM?countMap(Rf.map(r=>r[cM])):{};
   const ms=sorted(mMap,5);
   donut('cUniMarcas',ms.map(m=>m[0]),ms.map(m=>m[1]));
+  progBar($('plUniMarcas'),ms,total);
 
   // Tamanhos
   const tMap=cTA?countMap(Rf.map(r=>r[cTA])):{};
