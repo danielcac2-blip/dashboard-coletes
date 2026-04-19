@@ -533,22 +533,26 @@ function parseSheet(sheetData, skipHeaderRows=0){
 }
 
 // Ordem hierárquica de postos/graduações PMMG
-const POSTO_ORDER=[
-  'CORONEL','TENENTE CORONEL','MAJOR','CAPITAO','CAPITÃO',
-  '1 TENENTE','1º TENENTE','1° TENENTE','PRIMEIRO TENENTE',
-  '2 TENENTE','2º TENENTE','2° TENENTE','SEGUNDO TENENTE',
-  'ASPIRANTE','ASPIRANTE A OFICIAL',
-  'SUBTENENTE','SUB TENENTE',
-  '1 SARGENTO','1º SARGENTO','1° SARGENTO','PRIMEIRO SARGENTO',
-  '2 SARGENTO','2º SARGENTO','2° SARGENTO','SEGUNDO SARGENTO',
-  '3 SARGENTO','3º SARGENTO','3° SARGENTO','TERCEIRO SARGENTO',
-  'CABO','SOLDADO DE 1 CLASSE','SOLDADO DE 2 CLASSE','SOLDADO','ALUNO'
-];
-
 function postoIdx(p){
-  const u=(p||'').toUpperCase().trim()
-    .replace(/[°º]/g,' ').replace(/\s+/g,' ').trim();
-  const idx=POSTO_ORDER.findIndex(o=>u.includes(o)||o.includes(u));
+  const u=(p||'').toUpperCase().trim().replace(/[°º]/g,'').replace(/\s+/g,' ').trim();
+  const ordem=[
+    ['CORONEL',         v=>v==='CORONEL'||v==='CEL'],
+    ['TENENTE CORONEL', v=>v.includes('TENENTE CORONEL')||v==='TC'||v==='TEN CEL'],
+    ['MAJOR',           v=>v==='MAJOR'||v==='MAJ'],
+    ['CAPITAO',         v=>v==='CAPITAO'||v==='CAPITÃO'||v==='CAP'],
+    ['1 TENENTE',       v=>v.includes('1')&&v.includes('TENENTE')||v==='1 TEN'||v==='1TEN'],
+    ['2 TENENTE',       v=>v.includes('2')&&v.includes('TENENTE')||v==='2 TEN'||v==='2TEN'],
+    ['ASPIRANTE',       v=>v.includes('ASPIRANTE')],
+    ['SUBTENENTE',      v=>v.includes('SUBTENENTE')||v.includes('SUB TENENTE')||v==='ST'],
+    ['1 SARGENTO',      v=>v.includes('1')&&v.includes('SARGENTO')||v==='1 SGT'],
+    ['2 SARGENTO',      v=>v.includes('2')&&v.includes('SARGENTO')||v==='2 SGT'],
+    ['3 SARGENTO',      v=>v.includes('3')&&v.includes('SARGENTO')||v==='3 SGT'],
+    ['CABO',            v=>v==='CABO'||v==='CB'],
+    ['SOLDADO DE 1',    v=>v.includes('SOLDADO')&&v.includes('1')],
+    ['SOLDADO DE 2',    v=>v.includes('SOLDADO')&&v.includes('2')],
+    ['SOLDADO',         v=>v==='SOLDADO'||v==='SD'],
+  ];
+  const idx=ordem.findIndex(([,fn])=>fn(u));
   return idx<0?999:idx;
 }
 
