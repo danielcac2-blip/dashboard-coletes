@@ -1167,7 +1167,9 @@ function renderPosDistr(demData, vlrMasc, vlrFem){
     return res;
   }).filter(r=>r.TOTAL>0);
 
-  const grandTotalRes=residual.reduce((s,r)=>s+r.TOTAL,0);
+  const grandTotalResRaw=residual.reduce((s,r)=>s+r.TOTAL,0);
+  // Garante que substituídos + residual = total original exato
+  const grandTotalRes=origTotal-substTotal;
   const valorResTotal=residual.reduce((s,r)=>{
     const mQtd=['P_M','M_M','G_M','GG_M'].reduce((x,k)=>x+(r[k]||0),0);
     const fQtd=['P_F','M_F','G_F'].reduce((x,k)=>x+(r[k]||0),0);
@@ -1185,7 +1187,7 @@ function renderPosDistr(demData, vlrMasc, vlrFem){
   $('kpiPosDistr').innerHTML=[
     kpi('rd','Demanda Original',fmt(origTotal),'Coletes vencidos total','var(--rd)'),
     kpi('gn','Serão Substituídos',fmt(substTotal),`${origTotal?(substTotal/origTotal*100).toFixed(1):'0'}% cobertos`,'var(--gn)'),
-    kpi('am','Demanda Residual',fmt(grandTotalResFixed),'Ainda sem cobertura','var(--am)'),
+    kpi('am','Demanda Residual',fmt(grandTotalRes),'Ainda sem cobertura','var(--am)'),
     kpi('pp','Valor Residual',fmtR(valorResTotal),'Investimento restante','var(--pp)')
   ].join('');
 
@@ -1225,7 +1227,7 @@ function renderPosDistr(demData, vlrMasc, vlrFem){
     return `<tr><td><strong>${r.UNIDADE}</strong></td>${cells}<td style="text-align:center;color:var(--rd);font-weight:700">${r.TOTAL}</td><td style="text-align:right;color:var(--am)">${fmtR(val)}</td></tr>`;
   });
   const totCPD=tK.map(k=>{const t=residual.reduce((s,r)=>s+(r[k]||0),0);return `<td style="text-align:center;font-weight:700;color:var(--wh)">${t||'—'}</td>`;}).join('');
-  tamRowsPD.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(233,113,50,.05)"><td><strong>TOTAL RESIDUAL</strong></td>${totCPD}<td style="text-align:center;font-weight:700;color:var(--rd)">${grandTotalRes}</td><td style="text-align:right;font-weight:700;color:var(--am)">${fmtR(valorResTotal)}</td></tr>`);
+  tamRowsPD.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(233,113,50,.05)"><td><strong>TOTAL RESIDUAL</strong></td>${totCPD}<td style="text-align:center;font-weight:700;color:var(--rd)">${origTotal-substTotal}</td><td style="text-align:right;font-weight:700;color:var(--am)">${fmtR(valorResTotal)}</td></tr>`);
   $('tblPosDistr').innerHTML=table(tamHdr,tamRowsPD);
 }
 
