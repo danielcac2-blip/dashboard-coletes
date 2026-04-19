@@ -1176,13 +1176,11 @@ function renderPosDistr(demData, vlrMasc, vlrFem){
     return s+(mQtd*(vlrMasc||0))+(fQtd*(vlrFem||0));
   },0);
 
-  // origTotal = total de vencidos no FIXO (fonte da verdade = 140)
-  // Não usa a aba DEMANDA pois pode ter divergência de conversão
-  const origTotal=_fixoRows.filter(r=>{
-    const H2=_fixoHeaders;
-    const cV2=findCol(H2,['VÁLIDO','VENCIDO','VALIDO']);
-    return cV2&&(r[cV2]||'').toUpperCase().includes('VENCIDO');
-  }).length || unitRows.reduce((s,r)=>s+(parseInt(r.TOTAL)||0),0);
+  // origTotal = vencidos reais da aba FIXO (fonte da verdade)
+  const _cV2=findCol(_fixoHeaders,['VÁLIDO','VENCIDO','VALIDO']);
+  const origTotal=_cV2
+    ? _fixoRows.filter(r=>(r[_cV2]||'').toUpperCase().includes('VENCIDO')).length
+    : unitRows.reduce((s,r)=>s+(parseInt(r.TOTAL)||0),0);
   const substTotal=substSugeridas.length;
 
   $('kpiPosDistr').innerHTML=[
