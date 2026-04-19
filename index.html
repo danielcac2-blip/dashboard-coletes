@@ -1685,10 +1685,10 @@ function buscarUnidade(){
     const cVe=findCol(Hes,['VALIDADE']);
     const cStE=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO']);
     // Filtra estoque pela unidade — tenta match direto ou parcial
-    const uniBase=uni.split('/')[0].trim();
+    // Match exato na unidade do estoque — evita que "4 RPM" pegue registros do "EM4RPM/4 RPM"
     const Re=cUe?_estRows.filter(r=>{
       const uEst=(r[cUe]||'').trim();
-      return uEst===uni||uEst.includes(uniBase)||uni.includes(uEst);
+      return uEst===uni;
     }):[];
     // Debug: mostra todas as colunas disponíveis no estoque
     const cMe2=findCol(_estHeaders,['MARCA','FABRICANTE']);
