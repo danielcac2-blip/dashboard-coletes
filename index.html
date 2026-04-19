@@ -615,10 +615,8 @@ async function carregarDados(){
     if(demData&&subData)renderPosDistr(demData,vlrMasc,vlrFem);
 
     // Badges
-    if(semData){const {rows}=parseSheet(semData);$('bgSem').textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
-    if(estData){const {rows}=parseSheet(estData);$('bgEst').textContent=rows.length}
-    if(subData){const {rows}=parseSheet(subData);$('bgSub').textContent=rows.filter(r=>r['Nº']&&!isNaN(+r['Nº'])).length}
-    if(divData){const {rows}=parseSheet(divData);$('bgDiv').textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
+    if(semData){const {rows}=parseSheet(semData);const _s=$('bgSem');if(_s)_s.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
+    if(divData){const {rows}=parseSheet(divData);const _d=$('bgDiv');if(_d)_d.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
 
     $('dot').className='pd';$('dot').textContent='Conectado';
     $('sec-geral').classList.add('show');
