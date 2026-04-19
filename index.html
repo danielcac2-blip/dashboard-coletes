@@ -1596,7 +1596,7 @@ function buscarUnidade(){
 
   // Postos
   const pMap=cP?countMap(Rf.map(r=>r[cP])):{};
-  const ps=sorted(pMap,8);
+  const ps=sorted(pMap);
   hBar('cUniPosto',ps.map(p=>p[0]),ps.map(p=>p[1]));
 
   // Tabela vencendo 12 meses
