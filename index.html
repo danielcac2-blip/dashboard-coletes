@@ -7,11 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Rawline — Fonte oficial do Governo Federal brasileiro */
-@font-face{font-family:'Rawline';src:url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-400.woff2') format('woff2'),url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-400.woff') format('woff');font-weight:400;font-display:swap}
-@font-face{font-family:'Rawline';src:url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-500.woff2') format('woff2'),url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-500.woff') format('woff');font-weight:500;font-display:swap}
-@font-face{font-family:'Rawline';src:url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-600.woff2') format('woff2'),url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-600.woff') format('woff');font-weight:600;font-display:swap}
-@font-face{font-family:'Rawline';src:url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-700.woff2') format('woff2'),url('https://rawgit.com/nucleo-org/rawline/master/fonts/Rawline-700.woff') format('woff');font-weight:700;font-display:swap}
+/* Rawline via jsDelivr (suporta CORS) */
+@font-face{font-family:'Rawline';src:url('https://cdn.jsdelivr.net/gh/nucleo-org/rawline@master/fonts/Rawline-400.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Rawline';src:url('https://cdn.jsdelivr.net/gh/nucleo-org/rawline@master/fonts/Rawline-500.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'Rawline';src:url('https://cdn.jsdelivr.net/gh/nucleo-org/rawline@master/fonts/Rawline-600.woff2') format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'Rawline';src:url('https://cdn.jsdelivr.net/gh/nucleo-org/rawline@master/fonts/Rawline-700.woff2') format('woff2');font-weight:700;font-display:swap}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -282,13 +282,29 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
 
 <!-- ESTOQUE -->
 <div id="sec-estoque" class="sec">
-  <div class="sl">Estoque Físico de Coletes</div>
-  <div class="kg" id="kpiEst"></div>
-  <div class="cr r2">
-    <div class="cc"><div class="ct">Por Unidade <span class="tg">DISTRIBUIÇÃO</span></div><canvas id="cEstUni" class="tl"></canvas></div>
-    <div class="cc"><div class="ct">Por Tamanho <span class="tg">DISPONIBILIDADE</span></div><canvas id="cEstTam" class="tl"></canvas></div>
+  <div class="sl">Visão Geral do Estoque (Apenas Válidos)</div>
+  <div class="kg" id="kpiEstoque"></div>
+
+  <div class="sl">Comparativo por Tamanho — Fixo + Estoque Físico vs SIAD</div>
+  <div class="cr r1">
+    <div class="cc">
+      <div class="ct">Coletes Válidos por Tamanho <span class="tg">FIXO + EST. FÍSICO vs SIAD</span></div>
+      <div id="tblEstCompTam"></div>
+    </div>
   </div>
-  <div class="cr r1"><div class="cc"><div class="ct">Coletes em Estoque</div><div class="tbl-wrap" id="tblEst"></div></div></div>
+
+  <div class="sl">Comparativo por Unidade de Almoxarifado</div>
+  <div class="cr r1">
+    <div class="cc">
+      <div class="ct">Coletes Válidos por Unidade <span class="tg">ALMOXARIFADO</span></div>
+      <div id="tblEstCompUni"></div>
+    </div>
+  </div>
+
+  <div class="cr r2" style="margin-top:14px">
+    <div class="cc"><div class="ct">Fixo + Físico vs SIAD por Tamanho <span class="tg">VÁLIDOS</span></div><canvas id="cEstCompTam" class="tl"></canvas></div>
+    <div class="cc"><div class="ct">Fixo + Físico vs SIAD por Unidade <span class="tg">COMPARATIVO</span></div><canvas id="cEstCompUni" class="tl"></canvas></div>
+  </div>
 </div>
 
 <!-- SUBSTITUIÇÃO -->
@@ -626,6 +642,8 @@ async function carregarDados(){
     const semData=json['SEM COLETE']||findSheet(json,'sem colete');
     const estData=json['ESTOQUE FISICO']||findSheet(json,'estoque fisico');
     const siadData=json['ESTOQUE SIAD']||findSheet(json,'estoque siad');
+    console.log('Abas recebidas:', Object.keys(json).filter(k=>k!=='_meta'));
+    console.log('siadData:', siadData?'OK ('+siadData.totalLinhas+' linhas)':'NÃO ENCONTRADO');
     // Busca a aba de substituição com todas as variações possíveis
     const subData=json['SUBSTITUIÇÃO']||json['SUBSTITUICAO']||
       json['SUBSTITUIÇÃO 2']||json['SUBSTITUICAO 2']||json['SUBSTITUIÇÃO2']||
