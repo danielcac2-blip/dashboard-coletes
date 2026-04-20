@@ -214,7 +214,7 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   <div class="nt" data-tab="busca">🔍 Buscar Militar</div>
   <div class="nt" data-tab="semcolete">Sem Colete <span class="bg rd" id="bgSem">—</span></div>
   <div class="nt" data-tab="diverg">Divergências <span class="bg rd" id="bgDiv">—</span></div>
-  <div class="nt" data-tab="estoque">Estoque</div>
+  <div class="nt" data-tab="estoque">Almoxarifado</div>
   <div class="nt" data-tab="demanda">Demanda</div>
 </div>
 
@@ -282,7 +282,7 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
 
 <!-- ESTOQUE -->
 <div id="sec-estoque" class="sec">
-  <div class="sl">Visão Geral do Estoque (Apenas Válidos)</div>
+  <div class="sl">Almoxarifado — Visão Geral (Apenas Válidos)</div>
   <div class="kg" id="kpiEstoque"></div>
 
   <div class="sl">Comparativo por Tamanho — Fixo + Estoque Físico vs SIAD</div>
@@ -1631,34 +1631,65 @@ function renderEstoqueComp(fixoData, estFisicoData, siadData){
 
   // Tabela comparativo por unidade
   // Mapeia unidade SIAD → unidade FIXO (remove "ALMOXARIFADO VIRTUAL DO/DA/")
-  const normUniSiad=u=>(u||'').replace(/ALMOXARIFADO VIRTUAL (DO |DA |)/i,'').trim();
+  // === AGRUPAMENTO POR ALMOXARIFADO ===
+  // Unidades FIXO/FÍSICO → almoxarifado
+  const ALMOX={
+    '1259016 — EM4RPM/4 RPM':[
+      '2 BPM/4 RPM','27 BPM/4 RPM','4 RPM','EM4RPM/4 RPM',
+      '2 GRS','2 GRS/4 RPM','4 CIA PM IND PE/4 RPM','4 CIA PM IND/4 RPM'
+    ],
+    '1259043 — 21 BPM/4 RPM':[
+      '21 BPM/4 RPM','68 BPM/4 RPM','10 CIA PM IND/4 RPM','10 CIA IND/4 RPM'
+    ],
+    '1259202 — 47 BPM/4 RPM':[
+      '47 BPM/4 RPM'
+    ]
+  };
 
-  // FIXO por unidade
-  const fixoUni={};
-  fixoVal.forEach(r=>{const u=(r[cUfx]||'').trim();if(u)fixoUni[u]=(fixoUni[u]||0)+1;});
+  // SIAD unidade → almoxarifado
+  const SIAD_KEY={
+    'ALMOXARIFADO VIRTUAL DO EM4RPM/4 RPM':'1259016 — EM4RPM/4 RPM',
+    'ALMOXARIFADO VIRTUAL DO 21 BPM/4 RPM':'1259043 — 21 BPM/4 RPM',
+    'ALMOXARIFADO VIRTUAL 47 BPM/4 RPM'   :'1259202 — 47 BPM/4 RPM'
+  };
 
-  // EST FÍSICO por unidade
-  const estUni={};
-  estVal.forEach(r=>{const u=(r[cUe]||'').trim();if(u)estUni[u]=(estUni[u]||0)+1;});
+  const getAlmox=u=>{
+    const ut=(u||'').trim().toUpperCase();
+    for(const[key,units] of Object.entries(ALMOX)){
+      if(units.some(a=>ut===a.toUpperCase()||ut.startsWith(a.toUpperCase().split('/')[0])))
+        return key;
+    }
+    return null;
+  };
 
-  // SIAD por unidade
-  const siadUni={};
+  const almoxKeys=Object.keys(ALMOX);
+
+  // Agrupa FIXO por almoxarifado
+  const fixoAlmox={};
+  fixoVal.forEach(r=>{const a=getAlmox(r[cUfx]);if(a)fixoAlmox[a]=(fixoAlmox[a]||0)+1;});
+
+  // Agrupa EST FÍSICO por almoxarifado
+  const estAlmox={};
+  estVal.forEach(r=>{const a=getAlmox(r[cUe]);if(a)estAlmox[a]=(estAlmox[a]||0)+1;});
+
+  // Agrupa SIAD por almoxarifado
+  const siadAlmox={};
   siadVal.forEach(r=>{
-    const u=normUniSiad(r[cUnis]||'');
+    const key=SIAD_KEY[(r[cUnis]||'').trim()];
+    if(!key)return;
     const q=parseInt(r[cQtds])||0;
-    if(u)siadUni[u]=(siadUni[u]||0)+q;
+    siadAlmox[key]=(siadAlmox[key]||0)+q;
   });
 
-  const allUnis=[...new Set([...Object.keys(fixoUni),...Object.keys(estUni),...Object.keys(siadUni)])].sort();
-  const uniRows=allUnis.map(u=>{
-    const f=fixoUni[u]||0;
-    const e=estUni[u]||0;
+  const uniRows=almoxKeys.map(a=>{
+    const f=fixoAlmox[a]||0;
+    const e=estAlmox[a]||0;
     const total=f+e;
-    const s=siadUni[u]||0;
+    const s=siadAlmox[a]||0;
     const diff=s-total;
     const cls=diff<0?'td-rd':diff>0?'td-am':'td-gn';
     return `<tr>
-      <td><strong>${u}</strong></td>
+      <td><strong>${a}</strong></td>
       <td style="text-align:center;color:var(--gn)">${f||'—'}</td>
       <td style="text-align:center;color:var(--bl)">${e||'—'}</td>
       <td style="text-align:center;font-weight:700;color:var(--wh)">${total}</td>
@@ -1667,37 +1698,28 @@ function renderEstoqueComp(fixoData, estFisicoData, siadData){
     </tr>`;
   });
   $('tblEstCompUni').innerHTML=table(
-    ['Unidade','Fixo (válidos)','Est. Físico (válidos)','Total Fixo+Físico','SIAD (válidos)','Diferença (SIAD−Total)'],
+    ['Almoxarifado','Fixo (válidos)','Est. Físico (válidos)','Total Fixo+Físico','SIAD (válidos)','Diferença (SIAD−Total)'],
     uniRows
   );
 
   // Gráficos
   const tL=allTams;
-  const fixoArr=tL.map(t=>fixoTam[t]||0);
-  const estArr=tL.map(t=>estTam[t]||0);
-  const siadArr=tL.map(t=>siadTam[t]||0);
-
   killChart('cEstCompTam');
   charts['cEstCompTam']=new Chart($('cEstCompTam'),{type:'bar',
     data:{labels:tL,datasets:[
-      {label:'Fixo',data:fixoArr,backgroundColor:'rgba(78,167,46,.7)',borderRadius:3},
-      {label:'Est. Físico',data:estArr,backgroundColor:'rgba(15,158,213,.7)',borderRadius:3},
-      {label:'SIAD',data:siadArr,backgroundColor:'rgba(155,138,92,.7)',borderRadius:3}
+      {label:'Fixo',data:tL.map(t=>fixoTam[t]||0),backgroundColor:'rgba(78,167,46,.7)',borderRadius:3},
+      {label:'Est. Físico',data:tL.map(t=>estTam[t]||0),backgroundColor:'rgba(15,158,213,.7)',borderRadius:3},
+      {label:'SIAD',data:tL.map(t=>siadTam[t]||0),backgroundColor:'rgba(155,138,92,.7)',borderRadius:3}
     ]},
     options:{plugins:{legend:{display:true,labels:{color:'#8ab4cc'}},tooltip:TP()},
       scales:{x:{grid:{color:GC},ticks:{color:'#7a9bbf'}},y:{grid:{color:GC},ticks:{color:'#4a6d8e'}}}}
   });
 
-  const uL=allUnis;
-  const fixoUniArr=uL.map(u=>fixoUni[u]||0);
-  const estUniArr=uL.map(u=>estUni[u]||0);
-  const siadUniArr=uL.map(u=>siadUni[u]||0);
-
   killChart('cEstCompUni');
   charts['cEstCompUni']=new Chart($('cEstCompUni'),{type:'bar',
-    data:{labels:uL,datasets:[
-      {label:'Fixo+Físico',data:uL.map((u,i)=>fixoUniArr[i]+estUniArr[i]),backgroundColor:'rgba(78,167,46,.65)',borderRadius:3},
-      {label:'SIAD',data:siadUniArr,backgroundColor:'rgba(155,138,92,.7)',borderRadius:3}
+    data:{labels:almoxKeys,datasets:[
+      {label:'Fixo+Físico',data:almoxKeys.map(a=>(fixoAlmox[a]||0)+(estAlmox[a]||0)),backgroundColor:'rgba(78,167,46,.65)',borderRadius:3},
+      {label:'SIAD',data:almoxKeys.map(a=>siadAlmox[a]||0),backgroundColor:'rgba(155,138,92,.7)',borderRadius:3}
     ]},
     options:{indexAxis:'y',plugins:{legend:{display:true,labels:{color:'#8ab4cc'}},tooltip:TP()},
       scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e'}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:11}}}}}
