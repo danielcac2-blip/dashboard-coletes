@@ -214,6 +214,7 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   <div class="nt" data-tab="busca">🔍 Buscar Militar</div>
   <div class="nt" data-tab="semcolete">Sem Colete <span class="bg rd" id="bgSem">—</span></div>
   <div class="nt" data-tab="diverg">Divergências <span class="bg rd" id="bgDiv">—</span></div>
+  <div class="nt" data-tab="estoque">Estoque</div>
   <div class="nt" data-tab="demanda">Demanda</div>
 </div>
 
@@ -624,6 +625,7 @@ async function carregarDados(){
     const fixoData=json['FIXO']||findSheet(json,'fixo');
     const semData=json['SEM COLETE']||findSheet(json,'sem colete');
     const estData=json['ESTOQUE FISICO']||findSheet(json,'estoque fisico');
+    const siadData=json['ESTOQUE SIAD']||findSheet(json,'estoque siad');
     // Busca a aba de substituição com todas as variações possíveis
     const subData=json['SUBSTITUIÇÃO']||json['SUBSTITUICAO']||
       json['SUBSTITUIÇÃO 2']||json['SUBSTITUICAO 2']||json['SUBSTITUIÇÃO2']||
@@ -663,6 +665,7 @@ async function carregarDados(){
     });
     if(subData)safe('renderSubst',()=>renderSubst(subData));
     if(divData)safe('renderDiverg',()=>renderDiverg(divData));
+    if(fixoData&&estData&&siadData)safe('renderEstoqueComp',()=>renderEstoqueComp(fixoData,estData,siadData));
     if(demData)safe('renderDemanda',()=>{renderDemanda(demData);_demRaw=demData;});
     if(demData&&subData)safe('renderPosDistr',()=>renderPosDistr(demData,vlrMasc,vlrFem));
 
@@ -1526,6 +1529,161 @@ function limparBusca(){
   $('buscaTabela').innerHTML='';
   $('buscaCartao').style.display='none';
   $('buscaInput').focus();
+}
+
+// ===== RENDER: ESTOQUE COMPLETO =====
+function renderEstoqueComp(fixoData, estFisicoData, siadData){
+  // --- FIXO: só válidos ---
+  const{headers:Hf,rows:Rf}=parseSheet(fixoData);
+  const cTaf=findCol(Hf,['TAMANHO ATUAL']);
+  const cVf=findCol(Hf,['VÁLIDO','VENCIDO','VALIDO']);
+  const cUfx=findCol(Hf,['UNIDADE PRINCIPAL','UNIDADE']);
+  const fixoVal=Rf.filter(r=>{const s=(r[cVf]||'').toUpperCase();return s.includes('VALIDO')||s.includes('VÁLIDO');});
+  const fixoTam=countMap(fixoVal.map(r=>r[cTaf]||'').filter(v=>v));
+  const fixoTotal=fixoVal.length;
+
+  // --- ESTOQUE FÍSICO: só válidos ---
+  const{headers:He,rows:Re}=parseSheet(estFisicoData);
+  const cTe=findCol(He,['TAMANHO']);
+  const cVe=findCol(He,['VÁLIDO','VENCIDO','VALIDO','STATUS','SITUAÇÃO']);
+  const cUe=findCol(He,['UNIDADE PRINCIPAL','UNIDADE']);
+  const estVal=Re.filter(r=>{const s=(r[cVe]||'').toUpperCase();return!s.includes('VENCIDO');});
+  const estTam=countMap(estVal.map(r=>r[cTe]||'').filter(v=>v));
+  const estTotal=estVal.length;
+
+  // --- SIAD: só válidos, usando Quantidade Estoque ---
+  const{headers:Hs,rows:Rs}=parseSheet(siadData);
+  const cTams=findCol(Hs,['TAMANHO - GENERO','TAMANHO']);
+  const cQtds=findCol(Hs,['QUANTIDADE ESTOQUE','QUANTIDADE']);
+  const cVs=findCol(Hs,['VALIDO OU VENCIDO','VALIDO']);
+  const cUnis=findCol(Hs,['UNIDADE ALMOXARIFADO','UNIDADE']);
+
+  const siadVal=Rs.filter(r=>{const s=(r[cVs]||'').toUpperCase();return s.includes('VALIDO')||s.includes('VÁLIDO');});
+  const siadTam={};
+  siadVal.forEach(r=>{
+    const t=(r[cTams]||'').trim();
+    const q=parseInt(r[cQtds])||0;
+    if(t)siadTam[t]=(siadTam[t]||0)+q;
+  });
+  const siadTotal=Object.values(siadTam).reduce((s,v)=>s+v,0);
+
+  // KPIs
+  const totalGeral=fixoTotal+estTotal;
+  $('kpiEstoque').innerHTML=[
+    kpi('gn','Fixo (válidos)',fmt(fixoTotal),'Coletes em uso no efetivo','var(--gn)'),
+    kpi('bl','Estoque Físico (válidos)',fmt(estTotal),'Disponíveis para distribuição'),
+    kpi('wh','Total Fixo + Físico',fmt(totalGeral),'Coletes válidos consolidados','var(--wh)'),
+    kpi('am','SIAD (válidos)',fmt(siadTotal),'Registrado no sistema SIAD','var(--am)'),
+    kpi(totalGeral>siadTotal?'rd':'gn','Diferença',fmt(siadTotal-totalGeral),siadTotal>totalGeral?'SIAD acima do real':'SIAD abaixo do real',totalGeral>siadTotal?'var(--rd)':'var(--gn)')
+  ].join('');
+
+  // Todos os tamanhos possíveis
+  const allTams=[...new Set([...Object.keys(fixoTam),...Object.keys(estTam),...Object.keys(siadTam)])].sort();
+
+  // Tabela comparativo por tamanho
+  const tamRows=allTams.map(t=>{
+    const f=fixoTam[t]||0;
+    const e=estTam[t]||0;
+    const total=f+e;
+    const s=siadTam[t]||0;
+    const diff=s-total;
+    const cls=diff<0?'td-rd':diff>0?'td-am':'td-gn';
+    return `<tr>
+      <td><strong>${t}</strong></td>
+      <td style="text-align:center;color:var(--gn)">${f||'—'}</td>
+      <td style="text-align:center;color:var(--bl)">${e||'—'}</td>
+      <td style="text-align:center;font-weight:700;color:var(--wh)">${total}</td>
+      <td style="text-align:center;color:var(--am)">${s||'—'}</td>
+      <td style="text-align:center" class="${cls}">${diff>0?'+'+diff:diff}</td>
+    </tr>`;
+  });
+  const totF=fixoTotal,totE=estTotal,totT=totalGeral,totS=siadTotal,totD=totS-totT;
+  tamRows.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(15,158,213,.05)">
+    <td><strong>TOTAL</strong></td>
+    <td style="text-align:center;color:var(--gn);font-weight:700">${totF}</td>
+    <td style="text-align:center;color:var(--bl);font-weight:700">${totE}</td>
+    <td style="text-align:center;font-weight:700;color:var(--wh)">${totT}</td>
+    <td style="text-align:center;color:var(--am);font-weight:700">${totS}</td>
+    <td style="text-align:center;font-weight:700" class="${totD<0?'td-rd':totD>0?'td-am':'td-gn'}">${totD>0?'+'+totD:totD}</td>
+  </tr>`);
+  $('tblEstCompTam').innerHTML=table(
+    ['Tamanho','Fixo (válidos)','Est. Físico (válidos)','Total Fixo+Físico','SIAD (válidos)','Diferença (SIAD−Total)'],
+    tamRows
+  );
+
+  // Tabela comparativo por unidade
+  // Mapeia unidade SIAD → unidade FIXO (remove "ALMOXARIFADO VIRTUAL DO/DA/")
+  const normUniSiad=u=>(u||'').replace(/ALMOXARIFADO VIRTUAL (DO |DA |)/i,'').trim();
+
+  // FIXO por unidade
+  const fixoUni={};
+  fixoVal.forEach(r=>{const u=(r[cUfx]||'').trim();if(u)fixoUni[u]=(fixoUni[u]||0)+1;});
+
+  // EST FÍSICO por unidade
+  const estUni={};
+  estVal.forEach(r=>{const u=(r[cUe]||'').trim();if(u)estUni[u]=(estUni[u]||0)+1;});
+
+  // SIAD por unidade
+  const siadUni={};
+  siadVal.forEach(r=>{
+    const u=normUniSiad(r[cUnis]||'');
+    const q=parseInt(r[cQtds])||0;
+    if(u)siadUni[u]=(siadUni[u]||0)+q;
+  });
+
+  const allUnis=[...new Set([...Object.keys(fixoUni),...Object.keys(estUni),...Object.keys(siadUni)])].sort();
+  const uniRows=allUnis.map(u=>{
+    const f=fixoUni[u]||0;
+    const e=estUni[u]||0;
+    const total=f+e;
+    const s=siadUni[u]||0;
+    const diff=s-total;
+    const cls=diff<0?'td-rd':diff>0?'td-am':'td-gn';
+    return `<tr>
+      <td><strong>${u}</strong></td>
+      <td style="text-align:center;color:var(--gn)">${f||'—'}</td>
+      <td style="text-align:center;color:var(--bl)">${e||'—'}</td>
+      <td style="text-align:center;font-weight:700;color:var(--wh)">${total}</td>
+      <td style="text-align:center;color:var(--am)">${s||'—'}</td>
+      <td style="text-align:center" class="${cls}">${diff>0?'+'+diff:diff}</td>
+    </tr>`;
+  });
+  $('tblEstCompUni').innerHTML=table(
+    ['Unidade','Fixo (válidos)','Est. Físico (válidos)','Total Fixo+Físico','SIAD (válidos)','Diferença (SIAD−Total)'],
+    uniRows
+  );
+
+  // Gráficos
+  const tL=allTams;
+  const fixoArr=tL.map(t=>fixoTam[t]||0);
+  const estArr=tL.map(t=>estTam[t]||0);
+  const siadArr=tL.map(t=>siadTam[t]||0);
+
+  killChart('cEstCompTam');
+  charts['cEstCompTam']=new Chart($('cEstCompTam'),{type:'bar',
+    data:{labels:tL,datasets:[
+      {label:'Fixo',data:fixoArr,backgroundColor:'rgba(78,167,46,.7)',borderRadius:3},
+      {label:'Est. Físico',data:estArr,backgroundColor:'rgba(15,158,213,.7)',borderRadius:3},
+      {label:'SIAD',data:siadArr,backgroundColor:'rgba(155,138,92,.7)',borderRadius:3}
+    ]},
+    options:{plugins:{legend:{display:true,labels:{color:'#8ab4cc'}},tooltip:TP()},
+      scales:{x:{grid:{color:GC},ticks:{color:'#7a9bbf'}},y:{grid:{color:GC},ticks:{color:'#4a6d8e'}}}}
+  });
+
+  const uL=allUnis;
+  const fixoUniArr=uL.map(u=>fixoUni[u]||0);
+  const estUniArr=uL.map(u=>estUni[u]||0);
+  const siadUniArr=uL.map(u=>siadUni[u]||0);
+
+  killChart('cEstCompUni');
+  charts['cEstCompUni']=new Chart($('cEstCompUni'),{type:'bar',
+    data:{labels:uL,datasets:[
+      {label:'Fixo+Físico',data:uL.map((u,i)=>fixoUniArr[i]+estUniArr[i]),backgroundColor:'rgba(78,167,46,.65)',borderRadius:3},
+      {label:'SIAD',data:siadUniArr,backgroundColor:'rgba(155,138,92,.7)',borderRadius:3}
+    ]},
+    options:{indexAxis:'y',plugins:{legend:{display:true,labels:{color:'#8ab4cc'}},tooltip:TP()},
+      scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e'}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:11}}}}}
+  });
 }
 
 // ===== BUSCAR POR UNIDADE =====
