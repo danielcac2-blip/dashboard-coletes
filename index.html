@@ -1638,7 +1638,7 @@ function renderEstoqueComp(fixoData, estFisicoData, siadData){
       '2 BPM/4 RPM','27 BPM/4 RPM','4 RPM','EM4RPM/4 RPM',
       '2 GRS','2 GRS/4 RPM','4 CIA PM IND PE/4 RPM','4 CIA PM IND/4 RPM'
     ],
-    '1259043 — 21 BPM/4 RPM':[
+    '1259034 — 21 BPM/4 RPM':[
       '21 BPM/4 RPM','68 BPM/4 RPM','10 CIA PM IND/4 RPM','10 CIA IND/4 RPM'
     ],
     '1259202 — 47 BPM/4 RPM':[
@@ -1646,12 +1646,15 @@ function renderEstoqueComp(fixoData, estFisicoData, siadData){
     ]
   };
 
-  // SIAD unidade → almoxarifado
-  const SIAD_KEY={
-    'ALMOXARIFADO VIRTUAL DO EM4RPM/4 RPM':'1259016 — EM4RPM/4 RPM',
-    'ALMOXARIFADO VIRTUAL DO 21 BPM/4 RPM':'1259043 — 21 BPM/4 RPM',
-    'ALMOXARIFADO VIRTUAL 47 BPM/4 RPM'   :'1259202 — 47 BPM/4 RPM'
+  // Mapeamento por CÓDIGO numérico (coluna E da planilha ESTOQUE SIAD)
+  const SIAD_CODE_KEY={
+    '1259016':'1259016 — EM4RPM/4 RPM',
+    '1259034':'1259034 — 21 BPM/4 RPM',
+    '1259202':'1259202 — 47 BPM/4 RPM'
   };
+
+  // Coluna do código numérico no SIAD
+  const cCodSiad=findCol(Hs,['CÓDIGO UNIDADE ALMOXARIFADO','CODIGO UNIDADE ALMOXARIFADO','CÓDIGO UNIDADE','CODIGO UNIDADE']);
 
   const getAlmox=u=>{
     const ut=(u||'').trim().toUpperCase();
@@ -1662,7 +1665,8 @@ function renderEstoqueComp(fixoData, estFisicoData, siadData){
     return null;
   };
 
-  const almoxKeys=Object.keys(ALMOX);
+  // Atualiza chaves do ALMOX para refletir código correto 1259034
+  const almoxKeys=['1259016 — EM4RPM/4 RPM','1259034 — 21 BPM/4 RPM','1259202 — 47 BPM/4 RPM'];
 
   // Agrupa FIXO por almoxarifado
   const fixoAlmox={};
@@ -1672,10 +1676,11 @@ function renderEstoqueComp(fixoData, estFisicoData, siadData){
   const estAlmox={};
   estVal.forEach(r=>{const a=getAlmox(r[cUe]);if(a)estAlmox[a]=(estAlmox[a]||0)+1;});
 
-  // Agrupa SIAD por almoxarifado
+  // Agrupa SIAD por código numérico (coluna E)
   const siadAlmox={};
   siadVal.forEach(r=>{
-    const key=SIAD_KEY[(r[cUnis]||'').trim()];
+    const cod=String(parseInt(r[cCodSiad]||r['Código Unidade Almoxarifado']||r['Codigo Unidade Almoxarifado']||0));
+    const key=SIAD_CODE_KEY[cod];
     if(!key)return;
     const q=parseInt(r[cQtds])||0;
     siadAlmox[key]=(siadAlmox[key]||0)+q;
