@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260422232938 -->
+<!DOCTYPE html><!-- v2026042223321420260422232938 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -676,6 +676,18 @@ async function carregarDados(){
       renderGeral(fixoData,semData);
       const _fp=parseSheet(fixoData);
       _fixoRows=_fp.rows;_fixoHeaders=_fp.headers;
+      // DEBUG: mostra as chaves do primeiro registro e valor do Nº série
+      if(_fixoRows.length>0){
+        const _r0=_fixoRows[0];
+        const _keys=Object.keys(_r0);
+        console.log('FIXO chaves:', _keys.slice(10,16));
+        const _sk=_keys.find(k=>k.includes('SÉRIE')||k.includes('SERIE')||k.includes('SéRIE')||k.includes('S\u00C9RIE')||k.includes('S\u00E9rie'));
+        console.log('Chave série encontrada:', _sk);
+        console.log('Valor série row0:', _r0[_sk]);
+        // Busca row com 393287
+        const _found=_fixoRows.find(r=>Object.values(r).some(v=>v&&v.toString()==='393287'));
+        console.log('Row 393287:', _found?_found['NOME']||_found[Object.keys(_found)[0]]:'NÃO ENCONTRADO');
+      }
       popularUnidadesSelect();
     });
     if(semData)safe('renderSemColete',()=>{
