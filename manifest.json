@@ -1,0 +1,27 @@
+{
+  "name": "Coletes Balísticos — 4ª RPM/PMMG",
+  "short_name": "Coletes 4ª RPM",
+  "description": "Dashboard de Controle de Coletes Balísticos da 4ª Região de Polícia Militar de Minas Gerais",
+  "start_url": "/dashboard-coletes/",
+  "scope": "/dashboard-coletes/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#06131f",
+  "theme_color": "#0a1d2e",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"]
+}
