@@ -222,7 +222,6 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   <div class="nt" data-tab="busca">🔍 Buscar Militar</div>
   <div class="nt" data-tab="semcolete">Sem Colete <span class="bg rd" id="bgSem">—</span></div>
   <div class="nt" data-tab="diverg">Divergências <span class="bg rd" id="bgDiv">—</span></div>
-  <div class="nt" data-tab="estoque">Almoxarifado</div>
   <div class="nt" data-tab="demanda">Demanda</div>
 </div>
 
@@ -398,7 +397,7 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   <div class="cc" style="margin-bottom:16px">
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <input id="buscaInput" type="text"
-        placeholder="Digite o nome ou número de matrícula..."
+        placeholder="Digite nome, matrícula ou Nº de série do colete..."
         oninput="buscarMilitar()"
         style="flex:1;min-width:220px;background:var(--ny2);border:1px solid var(--bd2);color:var(--wh);
                padding:12px 16px;border-radius:6px;font-family:'Rawline';font-size:14px;outline:none;
@@ -1388,7 +1387,7 @@ function buscarMilitar(){
   }
 
   if(q.length<2){
-    info.textContent='Digite pelo menos 2 caracteres para buscar.';
+    info.textContent='Digite nome, matrícula ou Nº de série (mínimo 2 caracteres).';
     tabela.innerHTML='';cartao.style.display='none';count.textContent='—';return;
   }
 
