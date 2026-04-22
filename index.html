@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260422234226 -->
+<!DOCTYPE html><!-- v20260422234540 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1407,11 +1407,13 @@ function buscarMilitar(){
   const scSit=findCol(SH,['SITUAÇÃO','SITUACAO','SITUA']);
   const scTam=findCol(SH,['TAMANHO']);
 
-  // ---- Busca em FIXO ----
+  // ---- Busca em FIXO (nome, matrícula e Nº série) ----
   const resFixo=_fixoRows.filter(r=>{
     const nome=(r[cN]||'').toLowerCase();
     const num=(r[cNum]||'').toString().toLowerCase();
-    return nome.includes(q)||num.includes(q);
+    if(nome.includes(q)||num.includes(q))return true;
+    // Busca Nº série em todos os valores do registro
+    return Object.values(r).some(v=>v!=null&&v.toString().trim()===q);
   }).map(r=>({...r,__fonte:'fixo'}));
 
   // ---- Busca em SEM COLETE ----
