@@ -1904,18 +1904,20 @@ function buscarUnidade(){
     const cVe=findCol(Hes,['VALIDADE']);
     const cStE=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO']);
     // Filtra estoque pela unidade — tenta match direto ou parcial
-    // Busca coluna de unidade com variações possíveis
-    const cUe2=findCol(_estHeaders,['UNIDADE PRINCIPAL','UNIDADE'])||_estHeaders.find(h=>h.toUpperCase().includes('UNIDADE'));
-    const Re=(cUe2||cUe)?_estRows.filter(r=>{
-      const uEst=(r[cUe2||cUe]||'').trim();
+    // Busca coluna de unidade — trata variações de nome com newline
+    const _colUni=_estHeaders.find(h=>h.replace(/\s+/g,' ').trim().toUpperCase().includes('UNIDADE'));
+    const Re=_colUni?_estRows.filter(r=>{
+      const uEst=(r[_colUni]||'').toString().trim();
       return uEst===uni;
     }):[];
     // Debug: mostra todas as colunas disponíveis no estoque
-    const cMe2=findCol(_estHeaders,['MARCA','FABRICANTE']);
-    const cTe2=findCol(_estHeaders,['TAMANHO']);
-    const cSe2=findCol(_estHeaders,['Nº SÉRIE','SERIE','SÉRIE','SERIAL']);
-    const cVe2=findCol(_estHeaders,['VALIDADE']);
-    const cStE2=findCol(_estHeaders,['VÁLIDO','VENCIDO','VALIDO','STATUS']);
+    // Busca colunas com variações (headers podem ter quebras de linha)
+    const _fH=h=>_estHeaders.find(k=>k.replace(/\s+/g,' ').trim().toUpperCase().includes(h.toUpperCase()));
+    const cMe2=_fH('MARCA');
+    const cTe2=_fH('TAMANHO');
+    const cSe2=_fH('SÉRIE')||_fH('SERIE')||_fH('SERIAL');
+    const cVe2=_fH('VALIDADE');
+    const cStE2=_fH('VÁLIDO')||_fH('VALIDO')||_fH('VENCIDO')||_fH('STATUS');
     // Tabela resumo por tamanho
     if(Re.length){
       const tamEstMap=cTe2?countMap(Re.map(r=>(r[cTe2]||r[cTe]||'').trim()).filter(v=>v)):{}; 
