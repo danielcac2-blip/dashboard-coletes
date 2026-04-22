@@ -684,11 +684,12 @@ async function carregarDados(){
       const _sp=parseSheet(semData);
       _semRows=(_sp.rows||[]).filter(r=>Object.values(r).some(v=>v&&v.toString().length>2));
     });
-    if(estData)safe('renderEstoque',()=>{
-      renderEstoque(estData);
+    // Popula _estRows ANTES de renderEstoque para garantir disponibilidade mesmo em caso de erro
+    if(estData){
       const _ep=parseSheet(estData);
       _estRows=_ep.rows||[];_estHeaders=_ep.headers;
-    });
+      safe('renderEstoque',()=>renderEstoque(estData));
+    }
     if(subData)safe('renderSubst',()=>renderSubst(subData));
     if(divData)safe('renderDiverg',()=>renderDiverg(divData));
     if(fixoData&&estData&&siadData)safe('renderEstoqueComp',()=>renderEstoqueComp(fixoData,estData,siadData));
