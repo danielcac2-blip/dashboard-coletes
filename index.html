@@ -886,32 +886,8 @@ function renderSemColete(semData, fixoData){
 
 // ===== RENDER: ESTOQUE =====
 function renderEstoque(estData){
-  const{headers:H,rows:R}=parseSheet(estData);
-  const cU=findCol(H,['UNIDADE','PRINCIPAL']);
-  const cV=findCol(H,['VÁLIDO','VENCIDO','VALIDO']);
-  const cT=findCol(H,['TAMANHO']);
-  const cM=findCol(H,['MARCA']);
-  const cS=findCol(H,['Nº SÉRIE','SERIE','SÉRIE']);
-  const cVAL=findCol(H,['VALIDADE']);
-
-  const total=R.length;
-  const stMap=cV?countMap(R.map(r=>r[cV])):{};
-  const val=stMap['VALIDO']||stMap['VÁLIDO']||0;
-  const ven=stMap['VENCIDO']||0;
-
-  $('kpiEst').innerHTML=[
-    kpi('bl','Total Estoque',fmt(total),'Coletes físicos disponíveis'),
-    kpi('gn','Válidos',fmt(val),`${total?(val/total*100).toFixed(1):'0'}% disponíveis`,'var(--gn)'),
-    kpi('rd','Vencidos',fmt(ven),'Indisponíveis','var(--rd)')
-  ].join('');
-
-  hBar('cEstUni',sorted(cU?countMap(R.map(r=>r[cU])):{}).map(u=>u[0]),sorted(cU?countMap(R.map(r=>r[cU])):{}).map(u=>u[1]));
-  hBar('cEstTam',sorted(cT?countMap(R.map(r=>r[cT])):{}).map(t=>t[0]),sorted(cT?countMap(R.map(r=>r[cT])):{}).map(t=>t[1]));
-
-  $('tblEst').innerHTML=table(
-    ['Unidade','Marca','Tamanho','Nº Série','Validade','Status'],
-    R.slice(0,300).map(r=>{const st=(r[cV]||'').toUpperCase();return `<tr><td>${r[cU]||''}</td><td>${r[cM]||''}</td><td>${r[cT]||''}</td><td>${r[cS]||''}</td><td>${r[cVAL]||''}</td><td class="${st.includes('VENCIDO')?'td-rd':'td-gn'}">${r[cV]||''}</td></tr>`})
-  );
+  // Aba de estoque físico simples foi substituída pela aba Almoxarifado
+  // Esta função não renderiza mais nada — dados são guardados em _estRows
 }
 
 // ===== RENDER: SUBSTITUIÇÃO =====
