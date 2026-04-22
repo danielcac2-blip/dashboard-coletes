@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260422234540 -->
+<!DOCTYPE html><!-- v20260422235659 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1522,6 +1522,26 @@ function buscarMilitar(){
       }
       const st=(r[cStatus]||'').toUpperCase();
       const isVal=st.includes('VALIDO')||st.includes('VÁLIDO');
+      if(r.__fonte==='estoque'){
+        const uEst=(r[_cUeB]||'').trim();
+        const mEst=(r[_cMeB]||'').trim();
+        const tEst=(r[_cTeB]||'').trim();
+        const vEst=fmtDate(r[_cVeB]||'');
+        const stEst=(r[_cStB]||'').toUpperCase();
+        const stOk=!stEst.includes('VENCIDO');
+        // Pega Nº série do registro
+        const serEst=Object.values(r).find(v=>v!=null&&v.toString().trim()===q)||'';
+        return `<tr style="background:rgba(155,138,92,.06)">
+          <td title="Estoque físico">📦</td>
+          <td colspan="3" style="color:var(--am)"><strong>ESTOQUE FÍSICO</strong> — ${uEst}</td>
+          <td></td>
+          <td><strong>${mEst}</strong></td>
+          <td class="td-am">${tEst}</td>
+          <td style="font-family:'IBM Plex Mono';font-size:10px">${q}</td>
+          <td>${vEst}</td>
+          <td class="${stOk?'td-gn':'td-rd'}">${r[_cStB]||''}</td>
+        </tr>`;
+      }
       return `<tr>
         <td title="Com colete">🪖</td>
         <td><strong>${r[cN]||''}</strong></td>
