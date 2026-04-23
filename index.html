@@ -1443,12 +1443,47 @@ function buscarMilitar(){
     return nome.includes(q)||num.includes(q);
   }).map(r=>({...r,__fonte:'sem'}));
 
-  const res=[...resFixo,...resSem];
+  // ---- Colunas aba ESTOQUE FISICO ----
+  const Hes=_estHeaders;
+  const _cUeB=findCol(Hes,['UNIDADE PRINCIPAL','UNIDADE']);
+  const _cMeB=findCol(Hes,['MARCA']);
+  const _cTeB=findCol(Hes,['TAMANHO']);
+  const _cVeB=findCol(Hes,['VALIDADE']);
+  const _cStB=findCol(Hes,['VÁLIDO','VENCIDO','VALIDO','STATUS','SITUAÇÃO','SITUACAO']);
+  const _cNumB=findCol(Hes,['NUMERO','NÚMERO']);
+  const _cNomeB=findCol(Hes,['NOME']);
+  const _cSerieB=findCol(Hes,['Nº SÉRIE','N SERIE','SERIE','NÚMERO DE SÉRIE']);
 
-  const totalFixo=resFixo.length, totalSem=resSem.length;
+  // ---- Busca em ESTOQUE FISICO (nome, matrícula e Nº série) ----
+  const resEst=_estRows.filter(r=>{
+    const nome=(r[_cNomeB]||'').toLowerCase();
+    const num=(r[_cNumB]||'').toString().toLowerCase();
+    if(nome&&nome.length>2&&nome.includes(q))return true;
+    if(num&&num.includes(q))return true;
+    // Busca por Nº de série (numérico)
+    if(!/^\d+$/.test(q))return false;
+    // Tenta coluna série específica primeiro
+    if(_cSerieB){
+      const sv=(r[_cSerieB]||'').toString().trim();
+      const svn=parseFloat(sv);
+      if(!isNaN(svn)&&Math.floor(svn).toString()===q)return true;
+    }
+    // Fallback: procura em todos os valores numéricos da linha
+    return Object.entries(r).some(([k,v])=>{
+      if(!v||v==='')return false;
+      // Ignora colunas claramente não-série (texto longo, observações)
+      if(v.toString().length>15)return false;
+      const vn=parseFloat(v.toString().trim());
+      return !isNaN(vn)&&Math.floor(vn).toString()===q;
+    });
+  }).map(r=>({...r,__fonte:'estoque',_cUeB,_cMeB,_cTeB,_cVeB,_cStB}));
+
+  const res=[...resFixo,...resSem,...resEst];
+
+  const totalFixo=resFixo.length, totalSem=resSem.length, totalEst=resEst.length;
   count.textContent=res.length+' resultado'+(res.length!==1?'s':'');
-  info.textContent=res.length===0?'Nenhum militar encontrado.':
-    `${res.length} militar(es) — ${totalFixo} com colete | ${totalSem} sem colete`;
+  info.textContent=res.length===0?'Nenhum resultado encontrado.':
+    `${res.length} resultado(s) — ${totalFixo} com colete | ${totalSem} sem colete | ${totalEst} em estoque físico`;
 
   // ---- Cartão de destaque (resultado único) ----
   if(res.length===1){
@@ -1456,13 +1491,18 @@ function buscarMilitar(){
     const semColete=r.__fonte==='sem';
     const emEstoque=r.__fonte==='estoque';
     const st=(semColete||emEstoque)?null:(r[cStatus]||'').toUpperCase();
-    const isVal=emEstoque?(!(r[_cStB]||'').toUpperCase().includes('VENCIDO')):(semColete?false:(st.includes('VALIDO')||st.includes('VÁLIDO')));
+    const _rCUe=emEstoque?r._cUeB:null;
+    const _rCMe=emEstoque?r._cMeB:null;
+    const _rCTe=emEstoque?r._cTeB:null;
+    const _rCVe=emEstoque?r._cVeB:null;
+    const _rCSt=emEstoque?r._cStB:null;
+    const isVal=emEstoque?(!(_rCSt&&(r[_rCSt]||'').toUpperCase().includes('VENCIDO'))):(semColete?false:(st.includes('VALIDO')||st.includes('VÁLIDO')));
     cartao.style.display='block';
     if(emEstoque){
-      const _uE=(r[_cUeB]||'').trim();
-      const _mE=(r[_cMeB]||'').trim();
-      const _tE=(r[_cTeB]||'').trim();
-      const _vE=fmtDate(r[_cVeB]||'');
+      const _uE=(_rCUe&&r[_rCUe]||'').trim();
+      const _mE=(_rCMe&&r[_rCMe]||'').trim();
+      const _tE=(_rCTe&&r[_rCTe]||'').trim();
+      const _vE=fmtDate((_rCVe&&r[_rCVe])||'');
       const _vld=isVal?'✅ VÁLIDO':'⚠️ VENCIDO';
       const _cor=isVal?'var(--gn)':'var(--rd)';
       $('buscaCartaoInner').innerHTML=
@@ -1573,14 +1613,13 @@ function buscarMilitar(){
       const st=(r[cStatus]||'').toUpperCase();
       const isVal=st.includes('VALIDO')||st.includes('VÁLIDO');
       if(r.__fonte==='estoque'){
-        const uEst=(r[_cUeB]||'').trim();
-        const mEst=(r[_cMeB]||'').trim();
-        const tEst=(r[_cTeB]||'').trim();
-        const vEst=fmtDate(r[_cVeB]||'');
-        const stEst=(r[_cStB]||'').toUpperCase();
+        const _rU=r._cUeB,_rM=r._cMeB,_rT=r._cTeB,_rV=r._cVeB,_rS=r._cStB;
+        const uEst=(_rU&&r[_rU]||'').trim();
+        const mEst=(_rM&&r[_rM]||'').trim();
+        const tEst=(_rT&&r[_rT]||'').trim();
+        const vEst=fmtDate((_rV&&r[_rV])||'');
+        const stEst=(_rS&&(r[_rS]||'')||'').toUpperCase();
         const stOk=!stEst.includes('VENCIDO');
-        // Pega Nº série do registro
-        const serEst=Object.values(r).find(v=>v!=null&&v.toString().trim()===q)||'';
         return `<tr style="background:rgba(155,138,92,.06)">
           <td title="Estoque físico">📦</td>
           <td colspan="3" style="color:var(--am)"><strong>ESTOQUE FÍSICO</strong> — ${uEst}</td>
@@ -1589,7 +1628,7 @@ function buscarMilitar(){
           <td class="td-am">${tEst}</td>
           <td style="font-family:'IBM Plex Mono';font-size:10px">${q}</td>
           <td>${vEst}</td>
-          <td class="${stOk?'td-gn':'td-rd'}">${r[_cStB]||''}</td>
+          <td class="${stOk?'td-gn':'td-rd'}">${(_rS&&r[_rS])||''}</td>
         </tr>`;
       }
       return `<tr>
