@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260422235659 -->
+<!DOCTYPE html><!-- v20260423000430 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -676,6 +676,11 @@ async function carregarDados(){
       renderGeral(fixoData,semData);
       const _fp=parseSheet(fixoData);
       _fixoRows=_fp.rows;_fixoHeaders=_fp.headers;
+      console.log('_estRows count:', _estRows.length, '| sample key0:', _estRows.length?Object.keys(_estRows[0]).slice(0,5):[]);
+      if(_estRows.length){
+        const _ef=_estRows.find(r=>Object.values(r).some(v=>v&&v.toString()==='439381'));
+        console.log('estoque 439381:', _ef?JSON.stringify(Object.values(_ef).slice(0,6)):'NÃO ENCONTRADO');
+      }
       // DEBUG: mostra as chaves do primeiro registro e valor do Nº série
       if(_fixoRows.length>0){
         const _r0=_fixoRows[0];
