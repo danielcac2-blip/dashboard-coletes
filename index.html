@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260423000430 -->
+<!DOCTYPE html><!-- v20260423000653 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -702,8 +702,16 @@ async function carregarDados(){
     });
     // Popula _estRows ANTES de renderEstoque para garantir disponibilidade mesmo em caso de erro
     if(estData){
-      const _ep=parseSheet(estData);
-      _estRows=_ep.rows||[];_estHeaders=_ep.headers;
+      // ESTOQUE FISICO: usa linha 0 como cabeçalho (forçado)
+      const _eRaw=estData.dados||[];
+      if(_eRaw.length>1){
+        const _eH=_eRaw[0].map(v=>(v??'').toString().trim());
+        _estHeaders=_eH;
+        _estRows=_eRaw.slice(1)
+          .map(row=>Object.fromEntries(_eH.map((h,i)=>[h,(row[i]??'').toString().trim()])))
+          .filter(r=>_eH.some(h=>r[h]&&r[h]!==''));
+        console.log('_estRows populado:', _estRows.length, 'rows');
+      }
       safe('renderEstoque',()=>renderEstoque(estData));
     }
     if(subData)safe('renderSubst',()=>renderSubst(subData));
