@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260423002454 -->
+<!DOCTYPE html><!-- v20260423002726 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1427,12 +1427,11 @@ function buscarMilitar(){
     const nome=(r[cN]||'').toLowerCase();
     const num=(r[cNum]||'').toString().toLowerCase();
     if(nome.includes(q)||num.includes(q))return true;
-    // Busca Nº série em todos os valores do registro (trata float)
+    // Busca Nº série — só em valores numéricos (evita falso positivo em texto)
+    if(!/^\d+$/.test(q))return false;
     return Object.values(r).some(v=>{
       if(v==null||v==='')return false;
-      const vs=v.toString().trim();
-      if(vs===q)return true;
-      const vn=parseFloat(vs);
+      const vn=parseFloat(v.toString().trim());
       return !isNaN(vn)&&Math.floor(vn).toString()===q;
     });
   }).map(r=>({...r,__fonte:'fixo'}));
