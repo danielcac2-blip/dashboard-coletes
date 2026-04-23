@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260423002726 -->
+<!DOCTYPE html><!-- v20260423004706 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1443,7 +1443,7 @@ function buscarMilitar(){
     return nome.includes(q)||num.includes(q);
   }).map(r=>({...r,__fonte:'sem'}));
 
-  const resEst=_estRows.filter(r=>Object.entries(r).some(([k,v])=>{if(!v||isNaN(parseFloat(v)))return false;return Math.floor(parseFloat(v.toString().trim())).toString()===q;})).map(r=>({...r,__fonte:'estoque'}));const res=[...resFixo,...resSem,...resEst];
+  const res=[...resFixo,...resSem];
 
   const totalFixo=resFixo.length, totalSem=resSem.length;
   count.textContent=res.length+' resultado'+(res.length!==1?'s':'');
@@ -1454,9 +1454,39 @@ function buscarMilitar(){
   if(res.length===1){
     const r=res[0];
     const semColete=r.__fonte==='sem';
-    const st=semColete?null:(r[cStatus]||'').toUpperCase();
-    const isVal=semColete?false:(st.includes('VALIDO')||st.includes('VÁLIDO'));
+    const emEstoque=r.__fonte==='estoque';
+    const st=(semColete||emEstoque)?null:(r[cStatus]||'').toUpperCase();
+    const isVal=emEstoque?(!(r[_cStB]||'').toUpperCase().includes('VENCIDO')):(semColete?false:(st.includes('VALIDO')||st.includes('VÁLIDO')));
     cartao.style.display='block';
+    if(emEstoque){
+      const _uE=(r[_cUeB]||'').trim();
+      const _mE=(r[_cMeB]||'').trim();
+      const _tE=(r[_cTeB]||'').trim();
+      const _vE=fmtDate(r[_cVeB]||'');
+      const _stE=(r[_cStB]||'').toUpperCase();
+      $('buscaCartaoInner').innerHTML=\`
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono'">Situação</div>
+          <div style="font-size:16px;font-weight:700;color:var(--am)">📦 EM ESTOQUE FÍSICO</div>
+          <div style="font-size:12px;color:var(--tx2)">\${_uE}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono'">Colete</div>
+          <div style="font-size:14px;font-weight:700;color:var(--wh)">\${_mE}</div>
+          <div style="font-size:12px;color:var(--am)">Tamanho: <strong>\${_tE}</strong></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono'">Identificação</div>
+          <div style="font-size:13px;color:var(--tx)">Nº Série: <strong>\${q}</strong></div>
+          <div style="font-size:12px;color:var(--tx2)">Validade: \${_vE}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+          <div style="font-size:10px;color:var(--tx3);letter-spacing:1px;text-transform:uppercase;font-family:'IBM Plex Mono'">Status</div>
+          <div style="font-size:22px;font-weight:800;color:\${isVal?'var(--gn)':'var(--rd)'};\${isVal?'':''}margin:4px 0">\${isVal?'✅ VÁLIDO':'⚠️ VENCIDO'}</div>
+          <div style="font-size:11px;color:var(--tx3)">Não distribuído — disponível para entrega</div>
+        </div>\`;
+      return;
+    }
 
     if(semColete){
       $('buscaCartaoInner').innerHTML=`
