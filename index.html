@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260423001759 -->
+<!DOCTYPE html><!-- v20260423002158 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -681,6 +681,13 @@ async function carregarDados(){
         _estRows=_eRaw2.slice(1)
           .map(row=>Object.fromEntries(_eH2.map((h,i)=>[h,(row[i]??'').toString().trim()])))
           .filter(r=>_eH2.some(h=>r[h]&&r[h]!==''));
+        // DEBUG: mostra valor real do Nº série do primeiro registro
+        if(_estRows.length>0){
+          const _serieKey2=Object.keys(_estRows[0]).find(k=>k.toUpperCase().includes('SER'));
+          console.log('EST chave série:', _serieKey2, '| valor:', _estRows[0][_serieKey2]);
+          const _found2=_estRows.find(r=>Object.values(r).some(v=>v==='439381'||v==='439381.0'||String(Math.floor(parseFloat(v||'0')))===String(439381)));
+          console.log('EST busca 439381:', _found2?'ENCONTRADO':'NÃO');
+        }
       }
     }
 
