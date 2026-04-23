@@ -1443,7 +1443,7 @@ function buscarMilitar(){
     return nome.includes(q)||num.includes(q);
   }).map(r=>({...r,__fonte:'sem'}));
 
-  const res=[...resFixo,...resSem];
+  const resEst=_estRows.filter(r=>Object.entries(r).some(([k,v])=>{if(!v||isNaN(parseFloat(v)))return false;return Math.floor(parseFloat(v.toString().trim())).toString()===q;})).map(r=>({...r,__fonte:'estoque'}));const res=[...resFixo,...resSem,...resEst];
 
   const totalFixo=resFixo.length, totalSem=resSem.length;
   count.textContent=res.length+' resultado'+(res.length!==1?'s':'');
