@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428120000 -->
+<!DOCTYPE html><!-- v20260428_DIVFIX_PLANEJAMENTO -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -685,10 +685,11 @@ async function carregarDados(){
     // Calcula _divTotal ANTES de renderGeral — usa mesma lógica do renderDiverg
     if(divData){
       const{headers:_dH,rows:_dR}=parseSheet(divData);
-      const _cN2=_dH.find(h=>h.toUpperCase()==='NOME');
-      window._divTotal=_cN2
-        ? _dR.filter(r=>{const n=(r[_cN2]||'').trim();return n&&n!=='NOME'&&!n.includes('DIVERGÊNCIA')&&!n.includes('MILITAR')&&n.length>3}).length
-        : _dR.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length;
+      const _cTA2=findCol(_dH,['TAMANHO ATUAL','ATUAL']);
+      const _cTE2=findCol(_dH,['TAMANHO ESCOLHIDO','ESCOLHIDO']);
+      window._divTotal=(_cTA2&&_cTE2)
+        ? _dR.filter(r=>{const a=(r[_cTA2]||'').trim(),b=(r[_cTE2]||'').trim();return a&&b&&a!==b}).length
+        : 0;
     }
 
     // Popula estoque PRIMEIRO para estar disponível na busca
@@ -744,7 +745,7 @@ async function carregarDados(){
 
     // Badges
     if(semData){const {rows}=parseSheet(semData);const _s=$('bgSem');if(_s)_s.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
-    if(divData){const {rows}=parseSheet(divData);const _d=$('bgDiv');if(_d)_d.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
+    if(divData){const{headers:_dH2,rows:_dR2}=parseSheet(divData);const _cTA2=findCol(_dH2,['TAMANHO ATUAL','ATUAL']);const _cTE2=findCol(_dH2,['TAMANHO ESCOLHIDO','ESCOLHIDO']);const _d=$('bgDiv');if(_d)_d.textContent=(_cTA2&&_cTE2)?_dR2.filter(r=>{const a=(r[_cTA2]||'').trim(),b=(r[_cTE2]||'').trim();return a&&b&&a!==b}).length:0;}
 
     $('dot').className='pd';$('dot').textContent='Conectado';
     $('sec-geral').classList.add('show');
@@ -1096,11 +1097,11 @@ function renderSubst(subData){
 function renderDiverg(divData){
   const{headers:H,rows:allRows}=parseSheet(divData);
   const cN=findCol(H,['NOME']);
-  const R=allRows.filter(r=>{const n=(r[cN]||'').trim();return n&&n!=='NOME'&&!n.includes('DIVERGÊNCIA')&&!n.includes('MILITAR')&&n.length>3});
-
-  const total=R.length;
   const cTA=findCol(H,['TAMANHO ATUAL','ATUAL']);
   const cTE=findCol(H,['TAMANHO ESCOLHIDO','ESCOLHIDO']);
+  const R=(cTA&&cTE)?allRows.filter(r=>{const a=(r[cTA]||'').trim(),b=(r[cTE]||'').trim();return a&&b&&a!==b}):allRows.filter(r=>{const n=(r[cN]||'').trim();return n&&n!=='NOME'&&!n.includes('DIVERGÊNCIA')&&!n.includes('MILITAR')&&n.length>3});
+
+  const total=R.length;
   const cV=findCol(H,['VALIDO','VENCIDO','VÁLIDO']);
   const cU=findCol(H,['UNIDADE','PRINCIPAL']);
   const cP=findCol(H,['POSTO','GRAD']);
