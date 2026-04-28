@@ -740,8 +740,7 @@ async function carregarDados(){
     if(fixoData&&estData&&siadData)safe('renderEstoqueComp',()=>renderEstoqueComp(fixoData,estData,siadData));
     if(demData)safe('renderDemanda',()=>{renderDemanda(demData);_demRaw=demData;});
     if(demData&&subData)safe('renderPosDistr',()=>renderPosDistr(demData,vlrMasc,vlrFem));
-    // Renderiza seção de vencimento 12 meses na aba Demanda (usa _fixoRows + vlrMasc/vlrFem já definidos)
-    safe('renderDemandaVenc12',()=>renderDemandaVenc12());
+    if(fixoData)safe('renderDemandaVenc12',()=>renderDemandaVenc12(fixoData));
 
     // Badges
     if(semData){const {rows}=parseSheet(semData);const _s=$('bgSem');if(_s)_s.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
@@ -1265,31 +1264,36 @@ function renderDemanda(demData){
 }
 
 // ===== RENDER: DEMANDA — VENCENDO 12 MESES =====
-function renderDemandaVenc12(){
-  if(!_fixoRows.length)return;
-  const H=_fixoHeaders;
-  const cN=findCol(H,['NOME']);
+function renderDemandaVenc12(fixoData){
+  console.log('[V12] iniciando, fixoData:', !!fixoData);
+  const el=$('kpiVenc12Dem');
+  if(!fixoData){if(el)el.innerHTML='<p style="color:var(--rd);padding:14px;font-size:12px">Dados do FIXO não disponíveis.</p>';return;}
+
+  const{headers:H,rows:R}=parseSheet(fixoData);
+  console.log('[V12] rows FIXO:', R.length, 'headers:', H.slice(0,5));
+  if(!R.length){if(el)el.innerHTML='<p style="color:var(--tx3);padding:14px;font-size:12px">Sem dados FIXO.</p>';return;}
+
   const cU=findCol(H,['UNIDADE PRINCIPAL','UNIDADE']);
-  const cP=findCol(H,['POSTO','GRAD']);
   const cTA=findCol(H,['TAMANHO ATUAL']);
   const cVA=findCol(H,['VALIDADE']);
   const cSt=findCol(H,['VÁLIDO','VENCIDO','VALIDO']);
+  console.log('[V12] cols: cU=',cU,'cTA=',cTA,'cVA=',cVA,'cSt=',cSt);
 
   const hoje=new Date();
   const limite=new Date(hoje);limite.setFullYear(limite.getFullYear()+1);
 
   // Filtra apenas válidos que vencem nos próximos 12 meses
-  const prox12=_fixoRows.filter(r=>{
-    const st=(r[cSt]||'').toUpperCase();
+  const prox12=R.filter(r=>{
+    const st=(cSt?r[cSt]||'':'').toUpperCase();
     if(st.includes('VENCIDO'))return false;
     if(!cVA)return false;
     const d=parseDate(r[cVA]);
     return d&&d>=hoje&&d<=limite;
   });
+  console.log('[V12] prox12:', prox12.length);
 
   if(!prox12.length){
-    const el=$('kpiVenc12Dem');
-    if(el)el.innerHTML='<p style="color:var(--tx3);padding:14px;font-size:12px">Nenhum colete vencendo nos próximos 12 meses. ✅</p>';
+    if(el)el.innerHTML='<p style="color:var(--gn);padding:14px;font-size:12px">✅ Nenhum colete vencendo nos próximos 12 meses.</p>';
     return;
   }
 
@@ -1298,88 +1302,77 @@ function renderDemandaVenc12(){
   const tamKey=t=>{
     const u=(t||'').toUpperCase();
     const fem=u.includes('FEMININO');
-    if(u.startsWith('PP'))return fem?'PP_F':'PP_M';
-    if(u.startsWith('P'))return fem?'P_F':'P_M';
-    if(u.startsWith('GG'))return fem?'GG_F':'GG_M';
-    if(u.startsWith('G'))return fem?'G_F':'G_M';
-    if(u.startsWith('M'))return fem?'M_F':'M_M';
+    if(u.includes('GG'))return fem?'GG_F':'GG_M';
+    if(u.includes('PP'))return fem?'PP_F':'PP_M';
+    if(u.startsWith('P')||u==='P')return fem?'P_F':'P_M';
+    if(u.startsWith('G')||u==='G')return fem?'G_F':'G_M';
+    if(u.startsWith('M')||u==='M')return fem?'M_F':'M_M';
     return fem?'OUT_F':'OUT_M';
   };
 
   // Agrupa por unidade
   const uniMap={};
   prox12.forEach(r=>{
-    const uni=(cU&&r[cU]||'SEM UNIDADE').trim();
-    const tam=cTA?r[cTA]||'':'';;
+    const uni=(cU?r[cU]||'SEM UNIDADE':'SEM UNIDADE').trim();
+    const tam=cTA?r[cTA]||'':'';
     const tk=tamKey(tam);
     const fem=isFem(tam);
-    if(!uniMap[uni])uniMap[uni]={P_M:0,M_M:0,G_M:0,GG_M:0,PP_M:0,P_F:0,M_F:0,G_F:0,GG_F:0,PP_F:0,masc:0,fem:0,total:0,rows:[]};
+    if(!uniMap[uni])uniMap[uni]={P_M:0,M_M:0,G_M:0,GG_M:0,PP_M:0,P_F:0,M_F:0,G_F:0,GG_F:0,PP_F:0,masc:0,fem:0,total:0};
     uniMap[uni][tk]=(uniMap[uni][tk]||0)+1;
     if(fem)uniMap[uni].fem++;else uniMap[uni].masc++;
     uniMap[uni].total++;
-    uniMap[uni].rows.push(r);
   });
 
   const uniArr=Object.entries(uniMap).sort((a,b)=>b[1].total-a[1].total);
   const totalV12=prox12.length;
-  const totalMasc=prox12.filter(r=>!isFem(cTA?r[cTA]||'':'')).length;
-  const totalFem=prox12.length-totalMasc;
-  const valorEst=(totalMasc*vlrMasc)+(totalFem*vlrFem);
+  const totalFem=prox12.filter(r=>isFem(cTA?r[cTA]||'':'')).length;
+  const totalMasc=totalV12-totalFem;
+  const vM=vlrMasc||1955.5, vF=vlrFem||1927.75;
+  const valorEst=(totalMasc*vM)+(totalFem*vF);
 
   // KPIs
-  $('kpiVenc12Dem').innerHTML=[
-    kpi('am','A Vencer (12 meses)',fmt(totalV12),'Precisam de reposição','var(--am)'),
+  if(el)el.innerHTML=[
+    kpi('am','A Vencer (12 meses)',fmt(totalV12),'Reposição planejada','var(--am)'),
     kpi('rd','Valor Estimado',fmtR(valorEst),'Investimento necessário','var(--rd)'),
     kpi('bl','Unidades Afetadas',fmt(uniArr.length),'Com coletes a vencer'),
     kpi('gn','Masculino',fmt(totalMasc),'Coletes masc. a repor'),
-    `<div class="kc pp"><div class="kl">Feminino</div><div class="kv" style="color:var(--rd)">${fmt(totalFem)}</div><div class="ks">Coletes fem. a repor</div></div>`,
+    '<div class="kc pp"><div class="kl">Feminino</div><div class="kv" style="color:var(--rd)">'+fmt(totalFem)+'</div><div class="ks">Coletes fem. a repor</div></div>',
   ].join('');
 
   // Gráfico por unidade
-  const uniLabels=uniArr.map(u=>u[0]);
-  const uniTotais=uniArr.map(u=>u[1].total);
-  hBar('cVenc12DemUni',uniLabels,uniTotais,uniTotais.map(()=>'rgba(233,113,50,.65)'));
+  hBar('cVenc12DemUni',uniArr.map(u=>u[0]),uniArr.map(u=>u[1].total),uniArr.map(()=>'rgba(233,113,50,.65)'));
 
-  // Gráfico por tamanho
+  // Gráfico por tamanho — só mostra tamanhos com valor > 0
   const tKs=['PP_M','P_M','M_M','G_M','GG_M','PP_F','P_F','M_F','G_F','GG_F'];
-  const tLs=['PP Masc.','P Masc.','M Masc.','G Masc.','GG Masc.','PP Fem.','P Fem.','M Fem.','G Fem.','GG Fem.'];
-  const tDs=tKs.map(k=>prox12.filter(r=>{const tam=cTA?r[cTA]||'':'';return tamKey(tam)===k;}).length);
-  const tCs=tKs.map(k=>k.endsWith('_F')?'rgba(255,100,160,.65)':'rgba(233,113,50,.65)');
-  // Remove tamanhos zerados
+  const tLs=['PP M','P M','M M','G M','GG M','PP F','P F','M F','G F','GG F'];
+  const tDs=tKs.map(k=>uniArr.reduce((s,[,d])=>s+(d[k]||0),0));
   const tIdx=tDs.reduce((a,v,i)=>v>0?[...a,i]:a,[]);
-  vBar('cVenc12DemTam',tIdx.map(i=>tLs[i]),tIdx.map(i=>tDs[i]),tIdx.map(i=>tCs[i]));
+  if(tIdx.length)vBar('cVenc12DemTam',tIdx.map(i=>tLs[i]),tIdx.map(i=>tDs[i]),tIdx.map(i=>tKs[i].endsWith('_F')?'rgba(255,100,160,.65)':'rgba(233,113,50,.65)'));
 
   // Gráfico valor por unidade
-  const uniValArr=uniArr.map(([uni,d])=>[uni,Math.round(((d.masc*vlrMasc)+(d.fem*vlrFem))*100)/100]).sort((a,b)=>b[1]-a[1]);
+  const uniValArr=uniArr.map(([uni,d])=>[uni,Math.round(((d.masc*vM)+(d.fem*vF))*100)/100]);
   killChart('cVenc12DemVal');
   charts['cVenc12DemVal']=new Chart($('cVenc12DemVal'),{type:'bar',
-    data:{labels:uniValArr.map(u=>u[0]),datasets:[{
-      label:'Valor (R$)',data:uniValArr.map(u=>u[1]),
-      backgroundColor:'rgba(233,113,50,.55)',borderColor:'rgba(233,113,50,1)',borderWidth:1,borderRadius:4
-    }]},
+    data:{labels:uniValArr.map(u=>u[0]),datasets:[{label:'Valor (R$)',data:uniValArr.map(u=>u[1]),backgroundColor:'rgba(233,113,50,.55)',borderColor:'rgba(233,113,50,1)',borderWidth:1,borderRadius:4}]},
     options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{...TP(),callbacks:{label:ctx=>' R$ '+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
       scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e',callback:v=>'R$ '+v.toLocaleString('pt-BR')}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:11}}}}}
   });
 
-  // Tabela detalhada por unidade
-  const tamHdrs=['Unidade','PP M','P M','M M','G M','GG M','PP F','P F','M F','G F','GG F','Total','Valor Est.'];
+  // Tabela detalhada
   const tK2=['PP_M','P_M','M_M','G_M','GG_M','PP_F','P_F','M_F','G_F','GG_F'];
+  const tL2=['PP M','P M','M M','G M','GG M','PP F','P F','M F','G F','GG F'];
+  // Remove colunas zeradas
+  const colAtivos=tK2.reduce((a,k,i)=>uniArr.some(([,d])=>(d[k]||0)>0)?[...a,i]:a,[]);
+  const tamHdrs=['Unidade',...colAtivos.map(i=>tL2[i]),'Total','Valor Est.'];
   const tblRows=uniArr.map(([uni,d])=>{
-    const val=(d.masc*vlrMasc)+(d.fem*vlrFem);
-    const cells=tK2.map(k=>{
-      const v=d[k]||0;
-      const cor=k.endsWith('_F')?'var(--rd)':'var(--bl)';
-      return `<td style="text-align:center">${v>0?`<span style="color:${cor};font-weight:600">${v}</span>`:'—'}</td>`;
-    }).join('');
-    return `<tr><td><strong>${uni}</strong></td>${cells}<td style="text-align:center;color:var(--am);font-weight:600">${d.total}</td><td style="text-align:right;color:var(--am);font-weight:500">${fmtR(val)}</td></tr>`;
+    const val=(d.masc*vM)+(d.fem*vF);
+    const cells=colAtivos.map(i=>{const k=tK2[i];const v=d[k]||0;const cor=k.endsWith('_F')?'var(--rd)':'var(--bl)';return '<td style="text-align:center">'+(v>0?'<span style="color:'+cor+';font-weight:600">'+v+'</span>':'—')+'</td>';}).join('');
+    return '<tr><td><strong>'+uni+'</strong></td>'+cells+'<td style="text-align:center;color:var(--am);font-weight:600">'+d.total+'</td><td style="text-align:right;color:var(--am);font-weight:500">'+fmtR(val)+'</td></tr>';
   });
-  // Linha total geral
-  const totCells=tK2.map(k=>{
-    const tot=uniArr.reduce((s,[,d])=>s+(d[k]||0),0);
-    return `<td style="text-align:center;font-weight:700;color:var(--wh)">${tot||'—'}</td>`;
-  }).join('');
-  tblRows.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(233,113,50,.06)"><td><strong>TOTAL GERAL</strong></td>${totCells}<td style="text-align:center;font-weight:700;color:var(--am)">${totalV12}</td><td style="text-align:right;font-weight:700;color:var(--am)">${fmtR(valorEst)}</td></tr>`);
+  const totCells=colAtivos.map(i=>{const k=tK2[i];const tot=uniArr.reduce((s,[,d])=>s+(d[k]||0),0);return '<td style="text-align:center;font-weight:700;color:var(--wh)">'+(tot||'—')+'</td>';}).join('');
+  tblRows.push('<tr style="border-top:1px solid var(--bd2);background:rgba(233,113,50,.06)"><td><strong>TOTAL GERAL</strong></td>'+totCells+'<td style="text-align:center;font-weight:700;color:var(--am)">'+totalV12+'</td><td style="text-align:right;font-weight:700;color:var(--am)">'+fmtR(valorEst)+'</td></tr>');
   $('tblVenc12Dem').innerHTML=table(tamHdrs,tblRows);
+  console.log('[V12] renderizado com sucesso');
 }
 
 // ===== RENDER: DEMANDA PÓS DISTRIBUIÇÃO =====
