@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428_DATAFMT -->
+<!DOCTYPE html><!-- v20260428_DATAFMT2 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -618,15 +618,19 @@ function findCol(headers,keywords){
 
 function fmtDate(s){
   if(!s||s==='—'||s.toString().trim()==='')return '—';
-  // Tenta parse
-  const d=new Date(s);
+  const str=s.toString().trim();
+  // ISO format: yyyy-mm-dd — usa UTC para evitar problema de fuso
+  const iso=str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(iso)return iso[3]+'/'+iso[2]+'/'+iso[1];
+  // Outros formatos — tenta parse
+  const d=new Date(str);
   if(!isNaN(d.getTime())){
-    const dd=String(d.getDate()).padStart(2,'0');
-    const mm=String(d.getMonth()+1).padStart(2,'0');
-    const yyyy=d.getFullYear();
+    const dd=String(d.getUTCDate()).padStart(2,'0');
+    const mm=String(d.getUTCMonth()+1).padStart(2,'0');
+    const yyyy=d.getUTCFullYear();
     return dd+'/'+mm+'/'+yyyy;
   }
-  return s;
+  return str;
 }
 
 function parseDate(s){
