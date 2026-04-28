@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428_DIVFIX_PLANEJAMENTO -->
+<!DOCTYPE html><!-- v20260428_DIVFIX2_TAMPADRAO -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -788,7 +788,8 @@ function renderGeral(fixoData, semData){
   R.forEach(r=>{if(!cVA)return;const d=parseDate(r[cVA]);if(!d)return;const y=d.getFullYear();vAno[y]=(vAno[y]||0)+1;if((d-hoje)/864e5>=0&&(d-hoje)/864e5<=365)v12++});
 
   let divT=0;
-  if(cTA&&cTE)R.forEach(r=>{const a=(r[cTA]||'').trim(),b=(r[cTE]||'').trim();if(a&&b&&a!==b)divT++});
+  if(window._divTotal!==undefined)divT=window._divTotal;
+  else if(cTA&&cTE)R.forEach(r=>{const a=(r[cTA]||'').trim(),b=(r[cTE]||'').trim();if(a&&b&&a!==b)divT++});
 
   let masc=0,fem=0;
   if(cTA)R.forEach(r=>{const t=(r[cTA]||'').toUpperCase();if(t.includes('MASCULINO'))masc++;else if(t.includes('FEMININO'))fem++});
@@ -1345,7 +1346,7 @@ function renderDemandaVenc12(fixoData){
 
   // Gráfico por tamanho — só mostra tamanhos com valor > 0
   const tKs=['PP_M','P_M','M_M','G_M','GG_M','PP_F','P_F','M_F','G_F','GG_F'];
-  const tLs=['PP M','P M','M M','G M','GG M','PP F','P F','M F','G F','GG F'];
+  const tLs=['PP Masc.','P Masc.','M Masc.','G Masc.','GG Masc.','PP Fem.','P Fem.','M Fem.','G Fem.','GG Fem.'];
   const tDs=tKs.map(k=>uniArr.reduce((s,[,d])=>s+(d[k]||0),0));
   const tIdx=tDs.reduce((a,v,i)=>v>0?[...a,i]:a,[]);
   if(tIdx.length)vBar('cVenc12DemTam',tIdx.map(i=>tLs[i]),tIdx.map(i=>tDs[i]),tIdx.map(i=>tKs[i].endsWith('_F')?'rgba(255,100,160,.65)':'rgba(233,113,50,.65)'));
@@ -1361,7 +1362,7 @@ function renderDemandaVenc12(fixoData){
 
   // Tabela detalhada
   const tK2=['PP_M','P_M','M_M','G_M','GG_M','PP_F','P_F','M_F','G_F','GG_F'];
-  const tL2=['PP M','P M','M M','G M','GG M','PP F','P F','M F','G F','GG F'];
+  const tL2=['PP Masc.','P Masc.','M Masc.','G Masc.','GG Masc.','PP Fem.','P Fem.','M Fem.','G Fem.','GG Fem.'];
   // Remove colunas zeradas
   const colAtivos=tK2.reduce((a,k,i)=>uniArr.some(([,d])=>(d[k]||0)>0)?[...a,i]:a,[]);
   const tamHdrs=['Unidade',...colAtivos.map(i=>tL2[i]),'Total','Valor Est.'];
