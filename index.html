@@ -367,6 +367,25 @@ footer{text-align:center;padding:18px;border-top:1px solid var(--bd);font-size:1
   <div class="cr r1">
     <div class="cc"><div class="ct">Tamanhos Necessários por Unidade <span class="tg">DETALHAMENTO COMPLETO</span></div><div class="tbl-wrap" id="tblDemTam"></div></div>
   </div>
+
+  <!-- PLANEJAMENTO — VENCENDO 12 MESES -->
+  <div class="sl" style="margin-top:24px">Planejamento de Aquisição — Vencendo nos Próximos 12 Meses</div>
+  <div style="font-size:11px;color:var(--tx3);margin-bottom:16px;padding:10px 14px;background:rgba(233,113,50,.06);border:1px solid rgba(233,113,50,.25);border-radius:6px">
+    Coletes <strong>válidos</strong> cujo prazo de validade expira nos próximos 12 meses. Esses militares precisarão de reposição e devem ser incluídos no planejamento de aquisição.
+  </div>
+  <div class="kg" id="kpiVenc12Dem"></div>
+  <div class="cr r2">
+    <div class="cc"><div class="ct">Qtd. a Vencer por Unidade <span class="tg">PRÓXIMOS 12 MESES</span></div><canvas id="cVenc12DemUni" class="tl"></canvas></div>
+    <div class="cc"><div class="ct">Por Tamanho <span class="tg">DEMANDA FUTURA</span></div><canvas id="cVenc12DemTam" class="tl"></canvas></div>
+  </div>
+  <div class="sl">Valor Estimado de Aquisição — Vencendo 12 Meses</div>
+  <div class="cr r1">
+    <div class="cc"><div class="ct">Custo por Unidade <span class="tg">R$ ESTIMADO</span></div><canvas id="cVenc12DemVal" style="max-height:220px"></canvas></div>
+  </div>
+  <div class="sl">Detalhamento por Unidade — Coletes a Vencer</div>
+  <div class="cr r1">
+    <div class="cc"><div class="ct">Tamanhos a Repor por Unidade <span class="tg">DETALHAMENTO COMPLETO</span></div><div class="tbl-wrap" id="tblVenc12Dem"></div></div>
+  </div>
 </div>
 
 <!-- DEMANDA PÓS DISTRIBUIÇÃO -->
@@ -721,6 +740,8 @@ async function carregarDados(){
     if(fixoData&&estData&&siadData)safe('renderEstoqueComp',()=>renderEstoqueComp(fixoData,estData,siadData));
     if(demData)safe('renderDemanda',()=>{renderDemanda(demData);_demRaw=demData;});
     if(demData&&subData)safe('renderPosDistr',()=>renderPosDistr(demData,vlrMasc,vlrFem));
+    // Renderiza seção de vencimento 12 meses na aba Demanda (usa _fixoRows + vlrMasc/vlrFem já definidos)
+    safe('renderDemandaVenc12',()=>renderDemandaVenc12());
 
     // Badges
     if(semData){const {rows}=parseSheet(semData);const _s=$('bgSem');if(_s)_s.textContent=rows.filter(r=>Object.values(r).some(v=>v&&v.length>2)).length}
@@ -1243,6 +1264,124 @@ function renderDemanda(demData){
   $('tblDemTam').innerHTML=table(tamHeaders,tamRows);
 }
 
+// ===== RENDER: DEMANDA — VENCENDO 12 MESES =====
+function renderDemandaVenc12(){
+  if(!_fixoRows.length)return;
+  const H=_fixoHeaders;
+  const cN=findCol(H,['NOME']);
+  const cU=findCol(H,['UNIDADE PRINCIPAL','UNIDADE']);
+  const cP=findCol(H,['POSTO','GRAD']);
+  const cTA=findCol(H,['TAMANHO ATUAL']);
+  const cVA=findCol(H,['VALIDADE']);
+  const cSt=findCol(H,['VÁLIDO','VENCIDO','VALIDO']);
+
+  const hoje=new Date();
+  const limite=new Date(hoje);limite.setFullYear(limite.getFullYear()+1);
+
+  // Filtra apenas válidos que vencem nos próximos 12 meses
+  const prox12=_fixoRows.filter(r=>{
+    const st=(r[cSt]||'').toUpperCase();
+    if(st.includes('VENCIDO'))return false;
+    if(!cVA)return false;
+    const d=parseDate(r[cVA]);
+    return d&&d>=hoje&&d<=limite;
+  });
+
+  if(!prox12.length){
+    const el=$('kpiVenc12Dem');
+    if(el)el.innerHTML='<p style="color:var(--tx3);padding:14px;font-size:12px">Nenhum colete vencendo nos próximos 12 meses. ✅</p>';
+    return;
+  }
+
+  // Classifica Masc/Fem pelo campo tamanho
+  const isFem=t=>(t||'').toUpperCase().includes('FEMININO');
+  const tamKey=t=>{
+    const u=(t||'').toUpperCase();
+    const fem=u.includes('FEMININO');
+    if(u.startsWith('PP'))return fem?'PP_F':'PP_M';
+    if(u.startsWith('P'))return fem?'P_F':'P_M';
+    if(u.startsWith('GG'))return fem?'GG_F':'GG_M';
+    if(u.startsWith('G'))return fem?'G_F':'G_M';
+    if(u.startsWith('M'))return fem?'M_F':'M_M';
+    return fem?'OUT_F':'OUT_M';
+  };
+
+  // Agrupa por unidade
+  const uniMap={};
+  prox12.forEach(r=>{
+    const uni=(cU&&r[cU]||'SEM UNIDADE').trim();
+    const tam=cTA?r[cTA]||'':'';;
+    const tk=tamKey(tam);
+    const fem=isFem(tam);
+    if(!uniMap[uni])uniMap[uni]={P_M:0,M_M:0,G_M:0,GG_M:0,PP_M:0,P_F:0,M_F:0,G_F:0,GG_F:0,PP_F:0,masc:0,fem:0,total:0,rows:[]};
+    uniMap[uni][tk]=(uniMap[uni][tk]||0)+1;
+    if(fem)uniMap[uni].fem++;else uniMap[uni].masc++;
+    uniMap[uni].total++;
+    uniMap[uni].rows.push(r);
+  });
+
+  const uniArr=Object.entries(uniMap).sort((a,b)=>b[1].total-a[1].total);
+  const totalV12=prox12.length;
+  const totalMasc=prox12.filter(r=>!isFem(cTA?r[cTA]||'':'')).length;
+  const totalFem=prox12.length-totalMasc;
+  const valorEst=(totalMasc*vlrMasc)+(totalFem*vlrFem);
+
+  // KPIs
+  $('kpiVenc12Dem').innerHTML=[
+    kpi('am','A Vencer (12 meses)',fmt(totalV12),'Precisam de reposição','var(--am)'),
+    kpi('rd','Valor Estimado',fmtR(valorEst),'Investimento necessário','var(--rd)'),
+    kpi('bl','Unidades Afetadas',fmt(uniArr.length),'Com coletes a vencer'),
+    kpi('gn','Masculino',fmt(totalMasc),'Coletes masc. a repor'),
+    `<div class="kc pp"><div class="kl">Feminino</div><div class="kv" style="color:var(--rd)">${fmt(totalFem)}</div><div class="ks">Coletes fem. a repor</div></div>`,
+  ].join('');
+
+  // Gráfico por unidade
+  const uniLabels=uniArr.map(u=>u[0]);
+  const uniTotais=uniArr.map(u=>u[1].total);
+  hBar('cVenc12DemUni',uniLabels,uniTotais,uniTotais.map(()=>'rgba(233,113,50,.65)'));
+
+  // Gráfico por tamanho
+  const tKs=['PP_M','P_M','M_M','G_M','GG_M','PP_F','P_F','M_F','G_F','GG_F'];
+  const tLs=['PP Masc.','P Masc.','M Masc.','G Masc.','GG Masc.','PP Fem.','P Fem.','M Fem.','G Fem.','GG Fem.'];
+  const tDs=tKs.map(k=>prox12.filter(r=>{const tam=cTA?r[cTA]||'':'';return tamKey(tam)===k;}).length);
+  const tCs=tKs.map(k=>k.endsWith('_F')?'rgba(255,100,160,.65)':'rgba(233,113,50,.65)');
+  // Remove tamanhos zerados
+  const tIdx=tDs.reduce((a,v,i)=>v>0?[...a,i]:a,[]);
+  vBar('cVenc12DemTam',tIdx.map(i=>tLs[i]),tIdx.map(i=>tDs[i]),tIdx.map(i=>tCs[i]));
+
+  // Gráfico valor por unidade
+  const uniValArr=uniArr.map(([uni,d])=>[uni,Math.round(((d.masc*vlrMasc)+(d.fem*vlrFem))*100)/100]).sort((a,b)=>b[1]-a[1]);
+  killChart('cVenc12DemVal');
+  charts['cVenc12DemVal']=new Chart($('cVenc12DemVal'),{type:'bar',
+    data:{labels:uniValArr.map(u=>u[0]),datasets:[{
+      label:'Valor (R$)',data:uniValArr.map(u=>u[1]),
+      backgroundColor:'rgba(233,113,50,.55)',borderColor:'rgba(233,113,50,1)',borderWidth:1,borderRadius:4
+    }]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{...TP(),callbacks:{label:ctx=>' R$ '+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
+      scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e',callback:v=>'R$ '+v.toLocaleString('pt-BR')}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:11}}}}}
+  });
+
+  // Tabela detalhada por unidade
+  const tamHdrs=['Unidade','PP M','P M','M M','G M','GG M','PP F','P F','M F','G F','GG F','Total','Valor Est.'];
+  const tK2=['PP_M','P_M','M_M','G_M','GG_M','PP_F','P_F','M_F','G_F','GG_F'];
+  const tblRows=uniArr.map(([uni,d])=>{
+    const val=(d.masc*vlrMasc)+(d.fem*vlrFem);
+    const cells=tK2.map(k=>{
+      const v=d[k]||0;
+      const cor=k.endsWith('_F')?'var(--rd)':'var(--bl)';
+      return `<td style="text-align:center">${v>0?`<span style="color:${cor};font-weight:600">${v}</span>`:'—'}</td>`;
+    }).join('');
+    return `<tr><td><strong>${uni}</strong></td>${cells}<td style="text-align:center;color:var(--am);font-weight:600">${d.total}</td><td style="text-align:right;color:var(--am);font-weight:500">${fmtR(val)}</td></tr>`;
+  });
+  // Linha total geral
+  const totCells=tK2.map(k=>{
+    const tot=uniArr.reduce((s,[,d])=>s+(d[k]||0),0);
+    return `<td style="text-align:center;font-weight:700;color:var(--wh)">${tot||'—'}</td>`;
+  }).join('');
+  tblRows.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(233,113,50,.06)"><td><strong>TOTAL GERAL</strong></td>${totCells}<td style="text-align:center;font-weight:700;color:var(--am)">${totalV12}</td><td style="text-align:right;font-weight:700;color:var(--am)">${fmtR(valorEst)}</td></tr>`);
+  $('tblVenc12Dem').innerHTML=table(tamHdrs,tblRows);
+}
+
 // ===== RENDER: DEMANDA PÓS DISTRIBUIÇÃO =====
 function renderPosDistr(demData, vlrMasc, vlrFem){
   const raw=demData.dados||[];
@@ -1460,18 +1599,14 @@ function buscarMilitar(){
     const num=(r[_cNumB]||'').toString().toLowerCase();
     if(nome&&nome.length>2&&nome.includes(q))return true;
     if(num&&num.includes(q))return true;
-    // Busca por Nº de série (numérico)
     if(!/^\d+$/.test(q))return false;
-    // Tenta coluna série específica primeiro
     if(_cSerieB){
       const sv=(r[_cSerieB]||'').toString().trim();
       const svn=parseFloat(sv);
       if(!isNaN(svn)&&Math.floor(svn).toString()===q)return true;
     }
-    // Fallback: procura em todos os valores numéricos da linha
     return Object.entries(r).some(([k,v])=>{
       if(!v||v==='')return false;
-      // Ignora colunas claramente não-série (texto longo, observações)
       if(v.toString().length>15)return false;
       const vn=parseFloat(v.toString().trim());
       return !isNaN(vn)&&Math.floor(vn).toString()===q;
