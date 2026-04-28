@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428_TABNOME -->
+<!DOCTYPE html><!-- v20260428_BARRA_FINA -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -540,8 +540,8 @@ const CL=['rgba(15,158,213,.75)','rgba(78,167,46,.7)','rgba(233,113,50,.7)','rgb
 
 let charts={};
 function killChart(id){if(charts[id])try{charts[id].destroy();delete charts[id]}catch(e){}}
-function hBar(id,labels,data,colors){killChart(id);charts[id]=new Chart($(id),{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors||CL.slice(0,data.length),borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:TP()},scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e'}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:10}}}}}})}
-function vBar(id,labels,data,colors){killChart(id);charts[id]=new Chart($(id),{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors||CL.slice(0,data.length),borderRadius:4}]},options:{plugins:{legend:{display:false},tooltip:TP()},scales:{x:{grid:{display:false},ticks:{color:'#7a9bbf'}},y:{grid:{color:GC},ticks:{color:'#4a6d8e'}}}}})}
+function hBar(id,labels,data,colors){killChart(id);charts[id]=new Chart($(id),{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors||CL.slice(0,data.length),borderRadius:3,maxBarThickness:32}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:TP()},scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e'}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:10}}}}}})}
+function vBar(id,labels,data,colors){killChart(id);charts[id]=new Chart($(id),{type:'bar',data:{labels,datasets:[{data,backgroundColor:colors||CL.slice(0,data.length),borderRadius:4,maxBarThickness:40}]},options:{plugins:{legend:{display:false},tooltip:TP()},scales:{x:{grid:{display:false},ticks:{color:'#7a9bbf'}},y:{grid:{color:GC},ticks:{color:'#4a6d8e'}}}}})}
 function donut(id,labels,data,colors){killChart(id);charts[id]=new Chart($(id),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors||CL.slice(0,data.length),borderColor:'#0a0e1a',borderWidth:3,hoverOffset:6}]},options:{cutout:'68%',plugins:{legend:{display:false},tooltip:TP()}}})}
 function grouped(id,labels,ds){killChart(id);charts[id]=new Chart($(id),{type:'bar',data:{labels,datasets:ds},options:{plugins:{legend:{labels:{color:'#7a9bbf',font:{size:10}}},tooltip:TP()},scales:{x:{grid:{display:false},ticks:{color:'#7a9bbf'}},y:{grid:{color:GC},ticks:{color:'#4a6d8e'}}}}})}
 
