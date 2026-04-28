@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428_DIVFIX2_TAMPADRAO -->
+<!DOCTYPE html><!-- v20260428_DEMANDA_FILTRO -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1157,6 +1157,8 @@ function renderDemanda(demData){
   const unitRows=dataRows.filter(r=>!r.UNIDADE.toUpperCase().includes('TOTAL'));
   const totalRow=dataRows.find(r=>r.UNIDADE.toUpperCase().includes('TOTAL'));
   const grandTotal=totalRow?parseInt(totalRow.TOTAL)||0:unitRows.reduce((s,r)=>s+(parseInt(r.TOTAL)||0),0);
+  // Apenas unidades com demanda real
+  const unitRowsAtivas=unitRows.filter(r=>(parseInt(r.TOTAL)||0)>0);
 
   let valorTotal=0, rpMasc='', rpFem='', vigMasc='', vigFem='';
   let _vlrMasc=0, _vlrFem=0;
@@ -1194,21 +1196,21 @@ function renderDemanda(demData){
   $('kpiDem').innerHTML=[
     kpi('rd','Demanda Total',fmt(grandTotal),'Coletes para reposição','var(--rd)'),
     kpi('am','Valor Total Estimado',fmtR(valorTotal),'Investimento necessário','var(--am)'),
-    kpi('bl','Unidades',fmt(unitRows.length),'Com demanda de reposição'),
+    kpi('bl','Unidades',fmt(unitRowsAtivas.length),'Com demanda de reposição'),
     `<div class="kc gn"><div class="kl">Colete Masculino (unit.)</div><div class="kv" style="color:var(--bl);font-size:26px">${fmtR(vlrMasc)}</div><div class="ks">${rpMasc?'RP '+rpMasc:''} ${vigMasc?'· Vig. '+vigMasc:''}</div></div>`,
     `<div class="kc pp"><div class="kl">Colete Feminino (unit.)</div><div class="kv" style="color:var(--rd);font-size:26px">${fmtR(vlrFem)}</div><div class="ks">${rpFem?'RP '+rpFem:''} ${vigFem?'· Vig. '+vigFem:''}</div></div>`,
   ].join('');
 
-  const uD=unitRows.map(r=>[r.UNIDADE,parseInt(r.TOTAL)||0]).sort((a,b)=>b[1]-a[1]);
+  const uD=unitRowsAtivas.map(r=>[r.UNIDADE,parseInt(r.TOTAL)||0]).sort((a,b)=>b[1]-a[1]);
   hBar('cDemUni',uD.map(u=>u[0]),uD.map(u=>u[1]));
 
   const tL=['P Masc.','M Masc.','G Masc.','GG Masc.','P Fem.','M Fem.','G Fem.'];
   const tK=['P_M','M_M','G_M','GG_M','P_F','M_F','G_F'];
-  const tD=tK.map(k=>unitRows.reduce((s,r)=>s+(parseInt(r[k])||0),0));
+  const tD=tK.map(k=>unitRowsAtivas.reduce((s,r)=>s+(parseInt(r[k])||0),0));
   vBar('cDemTam',tL,tD,tK.map(k=>k.endsWith('_F')?'rgba(255,100,160,.6)':'rgba(15,158,213,.55)'));
 
   // Valor estimado por unidade
-  const uV=unitRows.map(r=>{
+  const uV=unitRowsAtivas.map(r=>{
     const mascQtd=['P_M','M_M','G_M','GG_M'].reduce((s,k)=>s+(parseInt(r[k])||0),0);
     const femQtd=['P_F','M_F','G_F'].reduce((s,k)=>s+(parseInt(r[k])||0),0);
     const val=(mascQtd*(_vlrMasc||vlrMasc))+(femQtd*(_vlrFem||vlrFem));
@@ -1244,7 +1246,7 @@ function renderDemanda(demData){
   // Tabela detalhada de tamanhos por unidade
   const tamHeaders=['Unidade','P Masc.','M Masc.','G Masc.','GG Masc.','P Fem.','M Fem.','G Fem.','Total','Valor Est.'];
   const tamKeys2=['P_M','M_M','G_M','GG_M','P_F','M_F','G_F'];
-  const tamRows=unitRows.map(r=>{
+  const tamRows=unitRowsAtivas.map(r=>{
     const mascQtd=['P_M','M_M','G_M','GG_M'].reduce((s,k)=>s+(parseInt(r[k])||0),0);
     const femQtd=['P_F','M_F','G_F'].reduce((s,k)=>s+(parseInt(r[k])||0),0);
     const valEst=(mascQtd*vlrMasc)+(femQtd*vlrFem);
@@ -1257,10 +1259,10 @@ function renderDemanda(demData){
   });
   // Linha de total
   const totCells=tamKeys2.map(k=>{
-    const tot=unitRows.reduce((s,r)=>s+(parseInt(r[k])||0),0);
+    const tot=unitRowsAtivas.reduce((s,r)=>s+(parseInt(r[k])||0),0);
     return `<td style="text-align:center;font-weight:700;color:var(--wh)">${tot||'—'}</td>`;
   }).join('');
-  tamRows.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(0,180,255,.04)"><td><strong>TOTAL GERAL</strong></td>${totCells}<td style="text-align:center;font-weight:700;color:var(--rd)">${unitRows.reduce((s,r)=>s+(parseInt(r.TOTAL)||0),0)}</td><td style="text-align:right;font-weight:700;color:var(--am)">${fmtR(valorTotal)}</td></tr>`);
+  tamRows.push(`<tr style="border-top:1px solid var(--bd2);background:rgba(0,180,255,.04)"><td><strong>TOTAL GERAL</strong></td>${totCells}<td style="text-align:center;font-weight:700;color:var(--rd)">${grandTotal}</td><td style="text-align:right;font-weight:700;color:var(--am)">${fmtR(valorTotal)}</td></tr>`);
 
   $('tblDemTam').innerHTML=table(tamHeaders,tamRows);
 }
