@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428_BARRA_FINA2 -->
+<!DOCTYPE html><!-- v20260428_BARRA_FINA3 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1222,16 +1222,16 @@ function renderDemanda(demData){
   }).sort((a,b)=>b[1]-a[1]);
 
   killChart('cDemValUni');
-  charts['cDemValUni']=new Chart($('cDemValUni'),{type:'bar',
+  const _cvEl=$('cDemValUni');
+  if(_cvEl)_cvEl.style.height=Math.max(60,uV.length*44)+'px';
+  charts['cDemValUni']=new Chart(_cvEl,{type:'bar',
     data:{labels:uV.map(u=>u[0]),datasets:[{
-      label:'Valor (R$)',
-      data:uV.map(u=>u[1]),
-      backgroundColor:'rgba(155,138,92,.7)',
-      borderColor:'rgba(155,138,92,1)',
-      borderWidth:1,
-      borderRadius:4,
-      maxBarThickness:32
-      }
+      label:'Valor (R$)',data:uV.map(u=>u[1]),
+      backgroundColor:'rgba(155,138,92,.7)',borderColor:'rgba(155,138,92,1)',
+      borderWidth:1,borderRadius:4,maxBarThickness:28
+    }]},
+    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{...TP(),callbacks:{label:ctx=>' R$ '+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
+      scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e',callback:v=>'R$ '+v.toLocaleString('pt-BR')}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:11}}}}
     }
   });
 
@@ -1348,8 +1348,10 @@ function renderDemandaVenc12(fixoData){
   // Gráfico valor por unidade
   const uniValArr=uniArr.map(([uni,d])=>[uni,Math.round(((d.masc*vM)+(d.fem*vF))*100)/100]);
   killChart('cVenc12DemVal');
-  charts['cVenc12DemVal']=new Chart($('cVenc12DemVal'),{type:'bar',
-    data:{labels:uniValArr.map(u=>u[0]),datasets:[{label:'Valor (R$)',data:uniValArr.map(u=>u[1]),backgroundColor:'rgba(233,113,50,.55)',borderColor:'rgba(233,113,50,1)',borderWidth:1,borderRadius:4,maxBarThickness:32}]},
+  const _cv12El=$('cVenc12DemVal');
+  if(_cv12El)_cv12El.style.height=Math.max(60,uniValArr.length*44)+'px';
+  charts['cVenc12DemVal']=new Chart(_cv12El,{type:'bar',
+    data:{labels:uniValArr.map(u=>u[0]),datasets:[{label:'Valor (R$)',data:uniValArr.map(u=>u[1]),backgroundColor:'rgba(233,113,50,.55)',borderColor:'rgba(233,113,50,1)',borderWidth:1,borderRadius:4,maxBarThickness:28}]},
     options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{...TP(),callbacks:{label:ctx=>' R$ '+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}}},
       scales:{x:{grid:{color:GC},ticks:{color:'#4a6d8e',callback:v=>'R$ '+v.toLocaleString('pt-BR')}},y:{grid:{display:false},ticks:{color:'#7a9bbf',font:{size:11}}}}}
   });
