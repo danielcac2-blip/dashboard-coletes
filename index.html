@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- v20260428_DEMANDA_FILTRO -->
+<!DOCTYPE html><!-- v20260428_DATAFMT -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -895,7 +895,7 @@ function renderGeral(fixoData, semData){
       const dias=d?Math.round((d-hoje2)/864e5):0;
       const cls=dias<90?'td-rd':dias<180?'td-am':'td-gn';
       const cMU2=findCol(H,['MUNICÍPIO','MUNICIPIO']);
-      return `<tr><td>${r[cNome12]||''}</td><td>${r[cP]||''}</td><td>${r[cMU2]||''}</td><td class="td-am">${r[cTA]||''}</td><td>${r[cVA]||''}</td><td class="${cls}">${dias} dias</td></tr>`;
+      return `<tr><td>${r[cNome12]||''}</td><td>${r[cP]||''}</td><td>${r[cMU2]||''}</td><td class="td-am">${r[cTA]||''}</td><td>${fmtDate(r[cVA]||'')}</td><td class="${cls}">${dias} dias</td></tr>`;
     })
   );
 }
