@@ -1185,6 +1185,15 @@ async function aba(nome, marca){
     if(L[i].some(v=>chave(v)===chave(marca))){ cab=i; break; }
   if(cab<0) throw new Error('a aba ' + nome + ' não tem a coluna "' + marca + '"');
   const nomes = (D_EMB.cols||{})[nome] || L[cab];
+  /* estrutura: os cabeçalhos de texto da planilha online precisam bater, posição a posição,
+     com os da última geração. Se não baterem, a aba no Drive é de uma versão anterior e
+     casar as colunas por posição traria dados trocados — melhor usar a reserva embutida. */
+  if((D_EMB.cols||{})[nome]){
+    const dif = L[cab].map((v,i)=>[String(v).trim(), String(nomes[i]||'').trim()])
+      .filter(([v,e])=> v && e && chave(v)!==chave(e));
+    if(dif.length) throw new Error('a aba ' + nome + ' está com estrutura antiga na planilha online ('
+      + dif.length + ' coluna(s) diferente(s), ex.: "' + dif[0][0] + '" onde se espera "' + dif[0][1] + '")');
+  }
   const h = L[cab].map((v,i)=> String(v).trim() || String(nomes[i]||'').trim());
   const out = L.slice(cab+1).filter(l=>l.some(v=>v!=='')).map(l=>{
     const o={}; h.forEach((k,i)=>{ if(k) o[chave(k)] = l[i]===undefined?'':l[i]; }); return o; });
@@ -1600,7 +1609,7 @@ async function sincronizar(primeira){
     document.getElementById('syncPlan').textContent = 'Planilha: ' + hhmm(agora);
     const fd = document.getElementById('fonteDados');
     if(fd) fd.textContent = (novo._faltando && novo._faltando.length)
-      ? 'planilha online lida — abas ausentes: ' + novo._faltando.join(', ')
+      ? 'planilha online lida — abas ausentes ou desatualizadas no Drive (exibindo a última geração): ' + novo._faltando.join(', ')
       : 'dados lidos da planilha online';
     if(!primeira){
       /* recarrega a página para redesenhar tudo com os dados novos */
